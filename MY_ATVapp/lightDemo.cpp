@@ -51,6 +51,7 @@ const string font_name = "fonts/arial.ttf";
 
 //Vector with meshes
 vector<struct MyMesh> myMeshes;
+vector<struct MyMesh> boatMeshes;
 
 //External array storage defined in AVTmathLib.cpp
 
@@ -141,16 +142,16 @@ void renderBoat(void) {
 	//render the boat
 	GLint loc;
 	pushMatrix(MODEL);
-	{
+	{	
 		translate(MODEL, -1.0f, 0.0f, 0.0f);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-		glUniform4fv(loc, 1, myMeshes[1].mat.ambient);
+		glUniform4fv(loc, 1, boatMeshes[0].mat.ambient);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-		glUniform4fv(loc, 1, myMeshes[1].mat.diffuse);
+		glUniform4fv(loc, 1, boatMeshes[0].mat.diffuse);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-		glUniform4fv(loc, 1, myMeshes[1].mat.specular);
+		glUniform4fv(loc, 1, boatMeshes[0].mat.specular);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-		glUniform1f(loc, myMeshes[1].mat.shininess);
+		glUniform1f(loc, boatMeshes[0].mat.shininess);
 
 		//compute and send the matrices to the shader
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -160,22 +161,22 @@ void renderBoat(void) {
 		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
 
 		//render the parent mesh
-		glBindVertexArray(myMeshes[1].vao);
-		glDrawElements(myMeshes[1].type, myMeshes[1].numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(boatMeshes[0].vao);
+		glDrawElements(boatMeshes[0].type, boatMeshes[0].numIndexes, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
-		//render the child mesh
+		//render the cone mesh attached to the cube
 		pushMatrix(MODEL);
 		{
-			translate(MODEL, 0.0f, 1.0f, 0.0f); //translate to the top of the parent mesh 
+			translate(MODEL, 0.5f, 1.0f, 0.5f); //translate to the top of the parent mesh
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-			glUniform4fv(loc, 1, myMeshes[2].mat.ambient);
+			glUniform4fv(loc, 1, boatMeshes[1].mat.ambient);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-			glUniform4fv(loc, 1, myMeshes[2].mat.diffuse);
+			glUniform4fv(loc, 1, boatMeshes[1].mat.diffuse);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-			glUniform4fv(loc, 1, myMeshes[2].mat.specular);
+			glUniform4fv(loc, 1, boatMeshes[1].mat.specular);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-			glUniform1f(loc, myMeshes[2].mat.shininess);
+			glUniform1f(loc, boatMeshes[1].mat.shininess);
 
 			//compute and send the matrices to the shader
 			computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -185,11 +186,76 @@ void renderBoat(void) {
 			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
 
 			//render the child mesh
-			glBindVertexArray(myMeshes[2].vao);
-			glDrawElements(myMeshes[2].type, myMeshes[2].numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(boatMeshes[1].vao);
+			glDrawElements(boatMeshes[1].type, boatMeshes[1].numIndexes, GL_UNSIGNED_INT, 0);
 			glBindVertexArray(0);
 		}
 		popMatrix(MODEL);
+
+		//render the paddles sticks
+		for (uint16_t i = 0; i < 2; i++) {
+			pushMatrix(MODEL);
+			{
+				scale(MODEL, 2.0f, 1.0f, 1.0f);
+				if (i == 0) {
+					translate(MODEL, 0.75f, 0.5f, 0.5f);
+					rotate(MODEL, 90.0f, 0.0f, 0.0f, 1.0f);
+				}
+				else {
+					translate(MODEL, -0.25f, 0.5f, 0.5f);
+					rotate(MODEL, 270.0f, 0.0f, 0.0f, 1.0f);
+				}
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+				glUniform4fv(loc, 1, boatMeshes[2 + i].mat.ambient);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+				glUniform4fv(loc, 1, boatMeshes[2 + i].mat.diffuse);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+				glUniform4fv(loc, 1, boatMeshes[2 + i].mat.specular);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+				glUniform1f(loc, boatMeshes[2 + i].mat.shininess);
+
+				//compute and send the matrices to the shader
+				computeDerivedMatrix(PROJ_VIEW_MODEL);
+				glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+				glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+				computeNormalMatrix3x3();
+				glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+				//render the child mesh
+				glBindVertexArray(boatMeshes[2 + i].vao);
+				glDrawElements(boatMeshes[2 + i].type, boatMeshes[2 + i].numIndexes, GL_UNSIGNED_INT, 0);
+				glBindVertexArray(0);
+
+				//render the paddle ends
+				pushMatrix(MODEL);
+				{	
+					scale(MODEL, 1.0f, 0.5f, 0.25f);
+					translate(MODEL, -0.5, -1.65f, -0.5f);// aqui não é preciso fazer translações diferentes para cada paddle end porque a matriz MODEL já está no sistema de coordenadas do paddle stick
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+					glUniform4fv(loc, 1, boatMeshes[4 + i].mat.ambient);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+					glUniform4fv(loc, 1, boatMeshes[4 + i].mat.diffuse);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+					glUniform4fv(loc, 1, boatMeshes[4 + i].mat.specular);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+					glUniform1f(loc, boatMeshes[4 + i].mat.shininess);
+
+					//compute and send the matrices to the shader
+					computeDerivedMatrix(PROJ_VIEW_MODEL);
+					glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+					glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+					computeNormalMatrix3x3();
+					glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+					//render the child mesh
+					glBindVertexArray(boatMeshes[4 + i].vao);
+					glDrawElements(boatMeshes[4 + i].type, boatMeshes[4 + i].numIndexes, GL_UNSIGNED_INT, 0);
+					glBindVertexArray(0);
+				}
+				popMatrix(MODEL);
+			}
+			popMatrix(MODEL);
+		}
 	}
 	popMatrix(MODEL);
 }
@@ -224,10 +290,27 @@ void renderPlain(void) {
 }
 void renderRedCylinders(void) {
 	GLint loc;
-	for (uint16_t i = 3; i < 9; i++) {
+	for (uint16_t i = 1; i < 7; i++) {
 		pushMatrix(MODEL);
-		{
-			translate(MODEL, i * 1.2f * pow((-1), i), 0.8f, i * 1.2f * pow((-1), i));
+		{	
+			if (i == 1) {
+				translate(MODEL, -8.0f, 0.8f, -8.0f);
+			}
+			else if (i == 2) {
+				translate(MODEL, -8.0f, 0.8f, 8.0f);
+			}
+			else if (i == 3) {
+				translate(MODEL, 8.0f, 0.8f, -8.0f);
+			}
+			else if (i == 4) {
+				translate(MODEL, 8.0f, 0.8f, 8.0f);
+			}
+			else if (i == 5) {
+				translate(MODEL, 0.0f, 0.8f, -8.0f);
+			}
+			else {
+				translate(MODEL, 0.0f, 0.8f, 8.0f);
+			}
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 			glUniform4fv(loc, 1, myMeshes[i].mat.ambient);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -654,7 +737,7 @@ void init()
 	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
 	amesh.mat.shininess = shininess;
 	amesh.mat.texCount = texcount;
-	myMeshes.push_back(amesh);
+	boatMeshes.push_back(amesh);
 
 	// create geometry and VAO of the 
 	amesh = createCone(1.5f, 0.5f, 20);
@@ -664,11 +747,37 @@ void init()
 	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
 	amesh.mat.shininess = shininess;
 	amesh.mat.texCount = texcount;
-	myMeshes.push_back(amesh);
+	boatMeshes.push_back(amesh);
+
+
+	//create paddles sticks as cylinders
+	for (uint16_t i = 0; i < 2; i++) {
+		amesh = createCylinder(0.75f, 0.2f, 20);
+		memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
+		memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
+		memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
+		memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+		amesh.mat.shininess = shininess;
+		amesh.mat.texCount = texcount;
+		boatMeshes.push_back(amesh);
+	}
+
+	//create the paddle ends as cubes
+	for (uint16_t i = 0; i < 2; i++) {
+		amesh = createCube();
+		memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
+		memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
+		memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
+		memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+		amesh.mat.shininess = shininess;
+		amesh.mat.texCount = texcount;
+		boatMeshes.push_back(amesh);
+	}
+	
 
 	// create geometry and VAO of 6 cylinders that will be in the water
 	for (uint16_t i = 0; i < 6; i++) {
-		amesh = createCylinder(1.5f, 0.5f, 20);
+		amesh = createCylinder(1.5f, 0.5f, 30);
 		memcpy(amesh.mat.ambient, amb1, 4 * sizeof(float));
 		memcpy(amesh.mat.diffuse, diff1, 4 * sizeof(float));
 		memcpy(amesh.mat.specular, spec1, 4 * sizeof(float));
