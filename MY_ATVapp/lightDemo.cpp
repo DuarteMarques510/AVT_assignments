@@ -137,9 +137,127 @@ void changeSize(int w, int h) {
 // Render stufff
 //
 
+void renderBoat(void) {
+	//render the boat
+	GLint loc;
+	pushMatrix(MODEL);
+	{
+		translate(MODEL, -1.0f, 0.0f, 0.0f);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+		glUniform4fv(loc, 1, myMeshes[1].mat.ambient);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+		glUniform4fv(loc, 1, myMeshes[1].mat.diffuse);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+		glUniform4fv(loc, 1, myMeshes[1].mat.specular);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+		glUniform1f(loc, myMeshes[1].mat.shininess);
+
+		//compute and send the matrices to the shader
+		computeDerivedMatrix(PROJ_VIEW_MODEL);
+		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+		computeNormalMatrix3x3();
+		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+		//render the parent mesh
+		glBindVertexArray(myMeshes[1].vao);
+		glDrawElements(myMeshes[1].type, myMeshes[1].numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+
+		//render the child mesh
+		pushMatrix(MODEL);
+		{
+			translate(MODEL, 0.0f, 1.0f, 0.0f); //translate to the top of the parent mesh 
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+			glUniform4fv(loc, 1, myMeshes[2].mat.ambient);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, myMeshes[2].mat.diffuse);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+			glUniform4fv(loc, 1, myMeshes[2].mat.specular);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+			glUniform1f(loc, myMeshes[2].mat.shininess);
+
+			//compute and send the matrices to the shader
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+			//render the child mesh
+			glBindVertexArray(myMeshes[2].vao);
+			glDrawElements(myMeshes[2].type, myMeshes[2].numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+		}
+		popMatrix(MODEL);
+	}
+	popMatrix(MODEL);
+}
+void renderPlain(void) {
+	GLint loc;
+	pushMatrix(MODEL);
+	{
+		translate(MODEL, 0.0f, 0.0f, 0.0f);
+		rotate(MODEL, 270.0f, 1.0f, 0.0f, 0.0f);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+		glUniform4fv(loc, 1, myMeshes[0].mat.ambient);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+		glUniform4fv(loc, 1, myMeshes[0].mat.diffuse);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+		glUniform4fv(loc, 1, myMeshes[0].mat.specular);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+		glUniform1f(loc, myMeshes[0].mat.shininess);
+
+		//compute and send the matrices to the shader
+		computeDerivedMatrix(PROJ_VIEW_MODEL);
+		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+		computeNormalMatrix3x3();
+		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+		//render the parent mesh
+		glBindVertexArray(myMeshes[0].vao);
+		glDrawElements(myMeshes[0].type, myMeshes[0].numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+	}
+	popMatrix(MODEL);
+}
+void renderRedCylinders(void) {
+	GLint loc;
+	for (uint16_t i = 3; i < 9; i++) {
+		pushMatrix(MODEL);
+		{
+			translate(MODEL, i * 1.2f * pow((-1), i), 0.8f, i * 1.2f * pow((-1), i));
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+			glUniform4fv(loc, 1, myMeshes[i].mat.ambient);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, myMeshes[i].mat.diffuse);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+			glUniform4fv(loc, 1, myMeshes[i].mat.specular);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+			glUniform1f(loc, myMeshes[i].mat.shininess);
+
+			//compute and send the matrices to the shader
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+			//render the parent mesh
+			glBindVertexArray(myMeshes[i].vao);
+			glDrawElements(myMeshes[i].type, myMeshes[i].numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+		}
+		popMatrix(MODEL);
+	}
+}
+
 void renderScene(void) {
 
 	GLint loc;
+	GLint m_viewport[4];
+	glGetIntegerv(GL_VIEWPORT, m_viewport);
 
 	FrameCount++;
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -148,7 +266,17 @@ void renderScene(void) {
 	loadIdentity(MODEL);
 	// set the camera using a function similar to gluLookAt
 	lookAt(cams[activeCamera].camPos[0], cams[activeCamera].camPos[1], cams[activeCamera].camPos[2], cams[activeCamera].camTarget[0], cams[activeCamera].camTarget[1], cams[activeCamera].camTarget[2], 0, 1, 0);
-
+	
+	float ratio = (float)(m_viewport[2] - m_viewport[0]) / (float)(m_viewport[3] - m_viewport[1]);
+	loadIdentity(PROJECTION);
+	if (cams[activeCamera].type == 0) {
+		//perspective camera
+		perspective(53.13f, ratio, 0.1f, 1000.0f);
+	}
+	else {
+		//orthogonal camera
+		ortho(ratio * (-10), ratio * 10, -10, 10, 0.1f, 20); //left, right, bottom, top
+	}
 
 	// use our shader
 	
@@ -163,71 +291,72 @@ void renderScene(void) {
 
 	int objId=0; //id of the object mesh - to be used as index of mesh: Mymeshes[objID] means the current mesh
 
-	for (int i = 0 ; i < myMeshes.size(); ++i) {
-			// send the material
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-			glUniform4fv(loc, 1, myMeshes[objId].mat.ambient);
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-			glUniform4fv(loc, 1, myMeshes[objId].mat.diffuse);
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-			glUniform4fv(loc, 1, myMeshes[objId].mat.specular);
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-			glUniform1f(loc, myMeshes[objId].mat.shininess);
-			pushMatrix(MODEL);
-			
+	//for (int i = 0 ; i < myMeshes.size(); ++i) {
+	//		// send the material
+	//		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+	//		glUniform4fv(loc, 1, myMeshes[objId].mat.ambient);
+	//		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+	//		glUniform4fv(loc, 1, myMeshes[objId].mat.diffuse);
+	//		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+	//		glUniform4fv(loc, 1, myMeshes[objId].mat.specular);
+	//		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+	//		glUniform1f(loc, myMeshes[objId].mat.shininess);
+	//		pushMatrix(MODEL);
+	//		
 
-			if (i == 0) {
-				rotate(MODEL, 270.0f, 1.0f, 0.0f, 0.0f);
-				translate(MODEL, 0.0f, 0.0f, 0.0f);
-			}
-			else if (i==1){
-				translate(MODEL, -1.0f, 0.0f, 0.0f);
-			}
-			else {
-				translate(MODEL, i*1.2f*pow((-1), i), 0.8f, i * 1.2f* pow((-1), i));
-			}
-				
+	//		if (i == 0) {
+	//			rotate(MODEL, 270.0f, 1.0f, 0.0f, 0.0f);
+	//			translate(MODEL, 0.0f, 0.0f, 0.0f);
+	//		}
+	//		else if (i==1){
+	//			translate(MODEL, -1.0f, 0.0f, 0.0f);
+	//		}
+	//		else {
+	//			translate(MODEL, i*1.2f*pow((-1), i), 0.8f, i * 1.2f* pow((-1), i));
+	//		}
+	//			
 
 
-			// send matrices to OGL
-			computeDerivedMatrix(PROJ_VIEW_MODEL);
-			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-			computeNormalMatrix3x3();
-			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+	//		// send matrices to OGL
+	//		computeDerivedMatrix(PROJ_VIEW_MODEL);
+	//		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+	//		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+	//		computeNormalMatrix3x3();
+	//		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
 
-			// Render mesh
-			glBindVertexArray(myMeshes[objId].vao);
-			
-			glDrawElements(myMeshes[objId].type, myMeshes[objId].numIndexes, GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);
+	//		// Render mesh
+	//		glBindVertexArray(myMeshes[objId].vao);
+	//		
+	//		glDrawElements(myMeshes[objId].type, myMeshes[objId].numIndexes, GL_UNSIGNED_INT, 0);
+	//		glBindVertexArray(0);
 
-			popMatrix(MODEL);
-			objId++;
-		
-	}
-
+	//		popMatrix(MODEL);
+	//		objId++;
+	//	
+	//}
+	renderPlain();
+	renderBoat();
+	renderRedCylinders();
 	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
 	glDisable(GL_DEPTH_TEST);
 	//the glyph contains transparent background colors and non-transparent for the actual character pixels. So we use the blending
 	glEnable(GL_BLEND);  
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	int m_viewport[4];
-	glGetIntegerv(GL_VIEWPORT, m_viewport);
+
 
 	//viewer at origin looking down at  negative z direction
 	pushMatrix(MODEL);
 	loadIdentity(MODEL);
 	pushMatrix(PROJECTION);
 	loadIdentity(PROJECTION);
-	if (cams[activeCamera].type == 0) {
-		//perspective camera
-		perspective(53.13f, 1.0f, 0.1f, 1000.0f);
-	}
-	else {
-		//orthogonal camera
-		ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
-	}
+	//if (cams[activeCamera].type == 0) {
+	//	//perspective camera
+	//	perspective(53.13f, 1.0f, 0.1f, 1000.0f);
+	//}
+	//else {
+	//	//orthogonal camera
+	//	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
+	//}
 	pushMatrix(VIEW);
 	loadIdentity(VIEW);
 	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
@@ -352,10 +481,12 @@ void processMouseMotion(int xx, int yy)
 		if (rAux < 0.1f)
 			rAux = 0.1f;
 	}
-
-	cams[activeCamera].camPos[0] = rAux * sin(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
-	cams[activeCamera].camPos[2] = rAux * cos(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
-	cams[activeCamera].camPos[1] = rAux *   						       sin(betaAux * 3.14f / 180.0f);
+	if (activeCamera == 0) {
+		cams[0].camPos[0] = rAux * sin(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
+		cams[0].camPos[2] = rAux * cos(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
+		cams[0].camPos[1] = rAux * sin(betaAux * 3.14f / 180.0f);
+	}
+	
 
 //  uncomment this if not using an idle or refresh func
 //	glutPostRedisplay();
@@ -440,8 +571,13 @@ void init()
 {
 	MyMesh amesh;
 	cams[0].camPos[1] = 2.0f;
-	cams[1].camPos[1] = 2.0f;
+	cams[1].camPos[0] = 0.01f;
+	cams[1].camPos[1] = 5.0f;
+	cams[1].camPos[2] = 0.0f;
 	cams[1].type = 1; //orthogonal camera
+	cams[2].camPos[0] = 0.01f;
+	cams[2].camPos[1] = 30.0f;
+	cams[2].camPos[2] = 0.0f;
 
 	/* Initialization of DevIL */
 	if (ilGetInteger(IL_VERSION_NUM) < IL_VERSION)
@@ -474,7 +610,7 @@ void init()
 	float diff2[] = { 0.1f, 0.1f, 0.8f, 1.0f }; //cor difusa do plano  
 	float spec2[] = { 0.9f, 0.9f, 0.9f, 1.0f };
 
-	amesh = createQuad(20.0f, 20.0f);
+	amesh = createQuad(20.0f, 20.0f); // create the plane for the scene
 	memcpy(amesh.mat.ambient, amb2, 4 * sizeof(float));
 	memcpy(amesh.mat.diffuse, diff2, 4 * sizeof(float));
 	memcpy(amesh.mat.specular, spec2, 4 * sizeof(float));
@@ -510,19 +646,18 @@ void init()
 	float spec1[] = {0.9f, 0.9f, 0.9f, 1.0f};
 	shininess=500.0;
 
-
-	// create geometry and VAO of the 
-	/*amesh = createCone(1.5f, 0.5f, 20);
+	//create geometry and VAO of the cube
+	amesh = createCube();
 	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
 	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
 	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
 	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
 	amesh.mat.shininess = shininess;
 	amesh.mat.texCount = texcount;
-	myMeshes.push_back(amesh);*/
+	myMeshes.push_back(amesh);
 
-	//create geometry and VAO of the cube
-	amesh = createCube();
+	// create geometry and VAO of the 
+	amesh = createCone(1.5f, 0.5f, 20);
 	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
 	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
 	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
