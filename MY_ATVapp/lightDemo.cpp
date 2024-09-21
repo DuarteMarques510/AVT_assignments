@@ -78,6 +78,19 @@ public: float camTarget[3] = { 0.0f, 0.0f, 0.0f };
 public: int type = 0; //0 - perspective, 1 - ortho
 };
 
+class boat {
+public: float speed = 0.0f;
+public: float direction[3] = { 1.0f, 0.0f, 0.0f }; //vetor diretor da direção do barco
+public: float position[3] = { 0.0f, 0.0f, 0.0f };
+};
+
+//boat
+boat myBoat;
+
+float speedDecay = 0.01f;
+float deltaT = 0.05f;
+float direction = 1.0f;
+
 //cameras
 
 camera cams[3];
@@ -95,6 +108,17 @@ long myTime,timebase = 0,frame = 0;
 char s[32];
 float lightPos[4] = {4.0f, 6.0f, 2.0f, 1.0f};
 
+void updateBoat(int direction) {
+	myBoat.position[0] += (myBoat.speed * myBoat.direction[0] * deltaT) * direction;
+	myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
+	myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
+	myBoat.speed -= speedDecay;
+	if (myBoat.speed < 0.0f) {
+		myBoat.speed = 0.0f;
+	}
+	glutPostRedisplay();
+}
+
 
 void timer(int value)
 {
@@ -109,6 +133,7 @@ void timer(int value)
 
 void refresh(int value)
 {
+	updateBoat(direction);
 	glutPostRedisplay(); 
 	glutTimerFunc(1000 / 60, refresh, 0);
 }
@@ -143,7 +168,7 @@ void renderBoat(void) {
 	GLint loc;
 	pushMatrix(MODEL);
 	{	
-		translate(MODEL, -1.0f, 0.0f, 0.0f);
+		translate(MODEL, myBoat.position[0], myBoat.position[1], myBoat.position[2]);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 		glUniform4fv(loc, 1, boatMeshes[0].mat.ambient);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -196,15 +221,18 @@ void renderBoat(void) {
 		for (uint16_t i = 0; i < 2; i++) {
 			pushMatrix(MODEL);
 			{
-				scale(MODEL, 2.0f, 1.0f, 1.0f);
+				scale(MODEL, 1.0f, 1.0f, 2.0f);
 				if (i == 0) {
-					translate(MODEL, 0.75f, 0.5f, 0.5f);
-					rotate(MODEL, 90.0f, 0.0f, 0.0f, 1.0f);
+					translate(MODEL, 0.5f, 0.35f, -0.25f);
+					rotate(MODEL, 60.0f, 1.0f, 0.0f, 0.0f); // com estas duas rotações a pá fica na posição correta e com a rotação correta
+					rotate(MODEL, 90.0f, 0.0f, 1.0f, 0.0f);
 				}
 				else {
-					translate(MODEL, -0.25f, 0.5f, 0.5f);
-					rotate(MODEL, 270.0f, 0.0f, 0.0f, 1.0f);
+					translate(MODEL, 0.5f, 0.35f, 0.75f);
+					rotate(MODEL, 300.0f, 1.0f, 0.0f, 0.0f);
+					rotate(MODEL, 270.0f, 0.0f, 1.0f, 0.0f);
 				}
+				
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 				glUniform4fv(loc, 1, boatMeshes[2 + i].mat.ambient);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -483,12 +511,15 @@ void processKeys(unsigned char key, int xx, int yy)
 		break;
 	case 'a':
 		//mexer cubo segundo um angulo e velocidade para a esquerda
+		myBoat.speed += 0.4f;
 		break;
 	case 'd':
 		//mexer cubo segundo um angulo e velocidade para a direita
+		myBoat.speed += 0.4f;
 		break;
 	case 's':
 		//toggle inverter direção frente/trás
+		direction = direction * (-1.0f);
 		break;
 	case 'o':
 		//toggle on/off multiplicador de força
@@ -650,10 +681,14 @@ GLuint setupShaders() {
 // Model loading and OpenGL setup
 //
 
+
 void init()
 {
 	MyMesh amesh;
-	cams[0].camPos[1] = 2.0f;
+	cams[0].camPos[1] = 10.0f;
+	cams[0].camTarget[0] = myBoat.position[0];
+	cams[0].camTarget[1] = myBoat.position[1];
+	cams[0].camTarget[2] = myBoat.position[2];
 	cams[1].camPos[0] = 0.01f;
 	cams[1].camPos[1] = 5.0f;
 	cams[1].camPos[2] = 0.0f;
@@ -824,6 +859,7 @@ int main(int argc, char **argv) {
 	glutTimerFunc(0, timer, 0);
 	//glutIdleFunc(renderScene);  // Use it for maximum performance
 	glutTimerFunc(0, refresh, 0);    //use it to to get 60 FPS whatever
+	//glutTimerFunc(0, updateBoat, direction);
 
 //	Mouse and Keyboard Callbacks
 	glutKeyboardFunc(processKeys);
