@@ -82,19 +82,25 @@ class boat {
 public: float speed = 0.0f;
 public: float direction[3] = { 1.0f, 0.0f, 0.0f }; //vetor diretor da direção do barco
 public: float position[3] = { 0.0f, 0.0f, 0.0f };
+public: float angle = 0.0f;
+public: float angularSpeed = 0.0f;
 };
 
 //boat
 boat myBoat;
 
-float speedDecay = 0.01f;
-float deltaT = 0.05f;
+float speedDecay = 0.02f;
+float angleDecay = 1.0f;
+float deltaT = 0.1f;
 float direction = 1.0f;
+float forceMultiplier = 1.0f;
 
 //cameras
 
 camera cams[3];
 int activeCamera = 0;
+
+bool canChangeDirection = true; //when true the boat can change direction, starts at true because the boat starts at speed 0
 
 // Mouse Tracking Variables
 int startX, startY, tracking = 0;
@@ -109,12 +115,27 @@ char s[32];
 float lightPos[4] = {4.0f, 6.0f, 2.0f, 1.0f};
 
 void updateBoat(int direction) {
+
+	myBoat.angle += (myBoat.angularSpeed * deltaT) * direction;
+
+	float radians = myBoat.angle * 3.14f / 180.0f;
+	myBoat.direction[0] = cos(radians);
+	myBoat.direction[2] = sin(radians);
 	myBoat.position[0] += (myBoat.speed * myBoat.direction[0] * deltaT) * direction;
 	myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
 	myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
 	myBoat.speed -= speedDecay;
 	if (myBoat.speed < 0.0f) {
 		myBoat.speed = 0.0f;
+		canChangeDirection = true;
+		
+	}
+	else {
+		canChangeDirection = false;
+	}
+	myBoat.angularSpeed -= angleDecay;
+	if (myBoat.angularSpeed < 0.001f || myBoat.angularSpeed>-0.001f) {
+		myBoat.angularSpeed = 0.0f;
 	}
 	glutPostRedisplay();
 }
@@ -168,7 +189,9 @@ void renderBoat(void) {
 	GLint loc;
 	pushMatrix(MODEL);
 	{	
+		//translate the boat to the position
 		translate(MODEL, myBoat.position[0], myBoat.position[1], myBoat.position[2]);
+		rotate(MODEL, myBoat.angle, 0.0f, 1.0f, 0.0f);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 		glUniform4fv(loc, 1, boatMeshes[0].mat.ambient);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -192,8 +215,9 @@ void renderBoat(void) {
 
 		//render the cone mesh attached to the cube
 		pushMatrix(MODEL);
-		{
+		{	
 			translate(MODEL, 0.5f, 1.0f, 0.5f); //translate to the top of the parent mesh
+			scale(MODEL, 0.5f, 0.5f, 0.5f); //scale the cone
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 			glUniform4fv(loc, 1, boatMeshes[1].mat.ambient);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -221,14 +245,13 @@ void renderBoat(void) {
 		for (uint16_t i = 0; i < 2; i++) {
 			pushMatrix(MODEL);
 			{
-				scale(MODEL, 1.0f, 1.0f, 2.0f);
 				if (i == 0) {
 					translate(MODEL, 0.5f, 0.35f, -0.25f);
 					rotate(MODEL, 60.0f, 1.0f, 0.0f, 0.0f); // com estas duas rotações a pá fica na posição correta e com a rotação correta
 					rotate(MODEL, 90.0f, 0.0f, 1.0f, 0.0f);
 				}
 				else {
-					translate(MODEL, 0.5f, 0.35f, 0.75f);
+					translate(MODEL, 0.5f, 0.35f, 1.25f);
 					rotate(MODEL, 300.0f, 1.0f, 0.0f, 0.0f);
 					rotate(MODEL, 270.0f, 0.0f, 1.0f, 0.0f);
 				}
@@ -257,7 +280,7 @@ void renderBoat(void) {
 				//render the paddle ends
 				pushMatrix(MODEL);
 				{	
-					scale(MODEL, 1.0f, 0.5f, 0.25f);
+					scale(MODEL, 1.0f, 1.0f, 0.25f);
 					translate(MODEL, -0.5, -1.65f, -0.5f);// aqui não é preciso fazer translações diferentes para cada paddle end porque a matriz MODEL já está no sistema de coordenadas do paddle stick
 					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 					glUniform4fv(loc, 1, boatMeshes[4 + i].mat.ambient);
@@ -322,23 +345,24 @@ void renderRedCylinders(void) {
 		pushMatrix(MODEL);
 		{	
 			if (i == 1) {
-				translate(MODEL, -8.0f, 0.8f, -8.0f);
+				translate(MODEL, -8.0f, -0.4f, -8.0f);
 			}
 			else if (i == 2) {
-				translate(MODEL, -8.0f, 0.8f, 8.0f);
+				translate(MODEL, -8.0f, -0.4f, 8.0f);
 			}
 			else if (i == 3) {
-				translate(MODEL, 8.0f, 0.8f, -8.0f);
+				translate(MODEL, 8.0f, -0.4f, -8.0f);
 			}
 			else if (i == 4) {
-				translate(MODEL, 8.0f, 0.8f, 8.0f);
+				translate(MODEL, 8.0f, -0.4f, 8.0f);
 			}
 			else if (i == 5) {
-				translate(MODEL, 0.0f, 0.8f, -8.0f);
+				translate(MODEL, 0.0f, -0.4f, -8.0f);
 			}
 			else {
-				translate(MODEL, 0.0f, 0.8f, 8.0f);
+				translate(MODEL, 0.0f, -0.4f, 8.0f);
 			}
+			rotate(MODEL, 60.0f, 1.0f, 0.0f, 0.0f);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 			glUniform4fv(loc, 1, myMeshes[i].mat.ambient);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -511,18 +535,31 @@ void processKeys(unsigned char key, int xx, int yy)
 		break;
 	case 'a':
 		//mexer cubo segundo um angulo e velocidade para a esquerda
-		myBoat.speed += 0.4f;
+		myBoat.speed += (0.4f*forceMultiplier);
+		myBoat.angularSpeed += (1.0f * forceMultiplier);
+		angleDecay = 0.5f;
 		break;
 	case 'd':
 		//mexer cubo segundo um angulo e velocidade para a direita
-		myBoat.speed += 0.4f;
+		myBoat.speed += (0.4f*forceMultiplier);
+		myBoat.angularSpeed -= (1.0f * forceMultiplier);
+		angleDecay = -0.5f;
 		break;
 	case 's':
 		//toggle inverter direção frente/trás
-		direction = direction * (-1.0f);
+		if (canChangeDirection) {
+			direction = direction * (-1.0f);
+			canChangeDirection = false;
+		}
 		break;
 	case 'o':
 		//toggle on/off multiplicador de força
+		if (forceMultiplier == 1.0f) {
+			forceMultiplier = 2.0f;
+		}
+		else {
+			forceMultiplier = 1.0f;
+		}
 		break;
 
 	}
@@ -774,8 +811,8 @@ void init()
 	amesh.mat.texCount = texcount;
 	boatMeshes.push_back(amesh);
 
-	// create geometry and VAO of the 
-	amesh = createCone(1.5f, 0.5f, 20);
+	// create geometry and VAO of the pawn on top of the boat
+	amesh = createPawn();
 	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
 	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
 	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
@@ -787,7 +824,7 @@ void init()
 
 	//create paddles sticks as cylinders
 	for (uint16_t i = 0; i < 2; i++) {
-		amesh = createCylinder(0.75f, 0.2f, 20);
+		amesh = createCylinder(1.75f, 0.2f, 20);
 		memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
 		memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
 		memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
