@@ -118,7 +118,7 @@ float aux = 0;
 
 void updateBoat(int direction) {
 
-	myBoat.angle += (myBoat.angularSpeed * deltaT) * direction * 100;
+	myBoat.angle += (myBoat.angularSpeed * deltaT) * direction;
 	float radians = myBoat.angle * 3.14f / 180.0f;
 	myBoat.direction[0] = cos(radians); 
 	myBoat.direction[2] = sin(radians);
@@ -539,13 +539,13 @@ void processKeys(unsigned char key, int xx, int yy)
 	case 'a':
 		//mexer cubo segundo um angulo e velocidade para a esquerda
 		myBoat.speed += (0.4f*forceMultiplier);
-		myBoat.angularSpeed += (1.0f * forceMultiplier);
+		myBoat.angularSpeed += (25.0f * forceMultiplier);
 		angleDecay = 0.5f;
 		break;
 	case 'd':
 		//mexer cubo segundo um angulo e velocidade para a direita
 		myBoat.speed += (0.4f*forceMultiplier);
-		myBoat.angularSpeed -= (1.0f * forceMultiplier);
+		myBoat.angularSpeed -= (25.0f * forceMultiplier);
 		angleDecay = -0.5f;
 		break;
 	case 's':
