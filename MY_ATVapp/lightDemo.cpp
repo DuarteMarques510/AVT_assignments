@@ -115,35 +115,48 @@ char s[32];
 float lightPos[4] = {4.0f, 6.0f, 2.0f, 1.0f};
 
 float aux = 0;
+float paddleangle = 0;
+bool paddlemoving = false;
+bool boatmovement = false;
 
 void updateBoat(int direction) {
+	if (boatmovement == true) { 
+		myBoat.angle += (myBoat.angularSpeed * deltaT) * direction;
+		float radians = myBoat.angle * 3.14f / 180.0f;
+		myBoat.direction[0] = cos(radians);
+		myBoat.direction[2] = sin(radians);
+		myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction;
+		myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
+		myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
+		/*if (aux != myBoat.angle) {
+			aux = myBoat.angle;
+			std::cout << "isto é o x:" << myBoat.position[0] << " ; isto é o z: " << myBoat.position[2] << "\n";
+		}*/
+		myBoat.speed -= speedDecay;
+		if (myBoat.speed < 0.0f) {
+			myBoat.speed = 0.0f;
+			canChangeDirection = true;
+			boatmovement = false;
 
-	myBoat.angle += (myBoat.angularSpeed * deltaT) * direction;
-	float radians = myBoat.angle * 3.14f / 180.0f;
-	myBoat.direction[0] = cos(radians); 
-	myBoat.direction[2] = sin(radians);
-	myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction;
-	myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
-	myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
-	/*if (aux != myBoat.angle) {
-		aux = myBoat.angle;
-		std::cout << "isto é o x:" << myBoat.position[0] << " ; isto é o z: " << myBoat.position[2] << "\n";
-	}*/
-	myBoat.speed -= speedDecay;
-	if (myBoat.speed < 0.0f) {
-		myBoat.speed = 0.0f;
-		canChangeDirection = true;
-
+		}
+		else {
+			canChangeDirection = false;
+		}
+		myBoat.angularSpeed -= angleDecay;
+		if (myBoat.angularSpeed < 0.001f || myBoat.angularSpeed>-0.001f) {
+			myBoat.angularSpeed = 0.0f;
+		}
+		if (paddleangle != 360.0f && paddleangle != 0.0f && paddleangle > 300) {
+			paddleangle += 6.0f;
+		}
+		std::cout << "o paddleangle e: " << paddleangle << "\n";
 	}
-	else {
-		canChangeDirection = false;
-	}
-	myBoat.angularSpeed -= angleDecay;
-	if (myBoat.angularSpeed < 0.001f || myBoat.angularSpeed>-0.001f) {
-		myBoat.angularSpeed = 0.0f;
+	else if (paddlemoving == true) {
+		paddleangle += 6.0f;
 	}
 	glutPostRedisplay();
 }
+
 void timer(int value)
 {
 	std::ostringstream oss;
@@ -252,11 +265,20 @@ void renderBoat(void) {
 					translate(MODEL, 0.5f, 0.35f, -0.25f);
 					rotate(MODEL, 60.0f, 1.0f, 0.0f, 0.0f); // com estas duas rotações a pá fica na posição correta e com a rotação correta
 					rotate(MODEL, 90.0f, 0.0f, 1.0f, 0.0f);
+					rotate(MODEL, paddleangle, 0.075f * direction, 0.2f * direction, 0.0f);
 				}
 				else {
 					translate(MODEL, 0.5f, 0.35f, 1.25f);
 					rotate(MODEL, 300.0f, 1.0f, 0.0f, 0.0f);
 					rotate(MODEL, 270.0f, 0.0f, 1.0f, 0.0f);
+					rotate(MODEL, paddleangle, -0.075f * direction, -0.2f * direction, 0.0f);
+				}
+				if (paddleangle == 354.0f) {
+					boatmovement = true;
+				}
+				else if (paddleangle == 360.0f) {
+					paddlemoving = false;
+					paddleangle = 0.0f;
 				}
 				
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
@@ -538,12 +560,14 @@ void processKeys(unsigned char key, int xx, int yy)
 		break;
 	case 'a':
 		//mexer cubo segundo um angulo e velocidade para a esquerda
+		paddlemoving = true;
 		myBoat.speed += (0.4f*forceMultiplier);
 		myBoat.angularSpeed += (25.0f * forceMultiplier);
 		angleDecay = 0.5f;
 		break;
 	case 'd':
 		//mexer cubo segundo um angulo e velocidade para a direita
+		paddlemoving = true;
 		myBoat.speed += (0.4f*forceMultiplier);
 		myBoat.angularSpeed -= (25.0f * forceMultiplier);
 		angleDecay = -0.5f;
