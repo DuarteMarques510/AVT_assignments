@@ -8,7 +8,7 @@
 // The code comes with no warranties, use it at your own risk.
 // You may use it, or parts of it, wherever you want.
 // 
-// Author: Jo„o Madeiras Pereira
+// Author: Jo√£o Madeiras Pereira
 //
 
 #include <math.h>
@@ -80,7 +80,7 @@ public: int type = 0; //0 - perspective, 1 - ortho
 
 class boat {
 public: float speed = 0.0f;
-public: float direction[3] = { 1.0f, 0.0f, 0.0f }; //vetor diretor da direÁ„o do barco
+public: float direction[3] = { 1.0f, 0.0f, 0.0f }; //vetor diretor da dire√ß√£o do barco
 public: float position[3] = { 0.0f, 0.0f, 0.0f };
 public: float angle = 0.0f;
 public: float angularSpeed = 0.0f;
@@ -114,21 +114,26 @@ long myTime,timebase = 0,frame = 0;
 char s[32];
 float lightPos[4] = {4.0f, 6.0f, 2.0f, 1.0f};
 
+float aux = 0;
+
 void updateBoat(int direction) {
 
-	myBoat.angle += (myBoat.angularSpeed * deltaT) * direction;
-
+	myBoat.angle += (myBoat.angularSpeed * deltaT) * direction * 100;
 	float radians = myBoat.angle * 3.14f / 180.0f;
-	myBoat.direction[0] = cos(radians);
+	myBoat.direction[0] = cos(radians); 
 	myBoat.direction[2] = sin(radians);
-	myBoat.position[0] += (myBoat.speed * myBoat.direction[0] * deltaT) * direction;
+	myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction;
 	myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
 	myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
+	/*if (aux != myBoat.angle) {
+		aux = myBoat.angle;
+		std::cout << "isto √© o x:" << myBoat.position[0] << " ; isto √© o z: " << myBoat.position[2] << "\n";
+	}*/
 	myBoat.speed -= speedDecay;
 	if (myBoat.speed < 0.0f) {
 		myBoat.speed = 0.0f;
 		canChangeDirection = true;
-		
+
 	}
 	else {
 		canChangeDirection = false;
@@ -139,8 +144,6 @@ void updateBoat(int direction) {
 	}
 	glutPostRedisplay();
 }
-
-
 void timer(int value)
 {
 	std::ostringstream oss;
@@ -247,7 +250,7 @@ void renderBoat(void) {
 			{
 				if (i == 0) {
 					translate(MODEL, 0.5f, 0.35f, -0.25f);
-					rotate(MODEL, 60.0f, 1.0f, 0.0f, 0.0f); // com estas duas rotaÁıes a p· fica na posiÁ„o correta e com a rotaÁ„o correta
+					rotate(MODEL, 60.0f, 1.0f, 0.0f, 0.0f); // com estas duas rota√ß√µes a p√° fica na posi√ß√£o correta e com a rota√ß√£o correta
 					rotate(MODEL, 90.0f, 0.0f, 1.0f, 0.0f);
 				}
 				else {
@@ -281,7 +284,7 @@ void renderBoat(void) {
 				pushMatrix(MODEL);
 				{	
 					scale(MODEL, 1.0f, 1.0f, 0.25f);
-					translate(MODEL, -0.5, -1.65f, -0.5f);// aqui n„o È preciso fazer translaÁıes diferentes para cada paddle end porque a matriz MODEL j· est· no sistema de coordenadas do paddle stick
+					translate(MODEL, -0.5, -1.65f, -0.5f);// aqui n√£o √© preciso fazer transla√ß√µes diferentes para cada paddle end porque a matriz MODEL j√° est√° no sistema de coordenadas do paddle stick
 					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 					glUniform4fv(loc, 1, boatMeshes[4 + i].mat.ambient);
 					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -546,14 +549,14 @@ void processKeys(unsigned char key, int xx, int yy)
 		angleDecay = -0.5f;
 		break;
 	case 's':
-		//toggle inverter direÁ„o frente/tr·s
+		//toggle inverter dire√ß√£o frente/tr√°s
 		if (canChangeDirection) {
 			direction = direction * (-1.0f);
 			canChangeDirection = false;
 		}
 		break;
 	case 'o':
-		//toggle on/off multiplicador de forÁa
+		//toggle on/off multiplicador de for√ßa
 		if (forceMultiplier == 1.0f) {
 			forceMultiplier = 2.0f;
 		}
