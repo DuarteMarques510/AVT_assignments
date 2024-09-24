@@ -115,23 +115,27 @@ char s[32];
 float lightPos[4] = {4.0f, 6.0f, 2.0f, 1.0f};
 
 float aux = 0;
-float paddleangle = 0;
-bool paddlemoving = false;
+float paddleangle[2] = {0.0f, 0.0f};
+bool paddlemoving[2] = {false, false};
 bool boatmovement = false;
 
 void updateBoat(int direction) {
+
+	for (uint16_t i = 0; i < 2; i++) {
+		if (paddlemoving[i] == true) {
+			paddleangle[i] += 6.0f;
+		}
+	}
+		
+
 	if (boatmovement == true) { 
 		myBoat.angle += (myBoat.angularSpeed * deltaT) * direction;
 		float radians = myBoat.angle * 3.14f / 180.0f;
 		myBoat.direction[0] = cos(radians);
 		myBoat.direction[2] = sin(radians);
-		myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction;
-		myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
+		myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction; //subtração porque assim a combinação do cosseno e seno dá a direção correta
+		myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction; 
 		myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
-		/*if (aux != myBoat.angle) {
-			aux = myBoat.angle;
-			std::cout << "isto é o x:" << myBoat.position[0] << " ; isto é o z: " << myBoat.position[2] << "\n";
-		}*/
 		myBoat.speed -= speedDecay;
 		if (myBoat.speed < 0.0f) {
 			myBoat.speed = 0.0f;
@@ -146,13 +150,13 @@ void updateBoat(int direction) {
 		if (myBoat.angularSpeed < 0.001f || myBoat.angularSpeed>-0.001f) {
 			myBoat.angularSpeed = 0.0f;
 		}
-		if (paddleangle != 360.0f && paddleangle != 0.0f && paddleangle > 300) {
-			paddleangle += 6.0f;
+		for (uint16_t i = 0; i < 2; i++) {
+			if (paddleangle[i] != 360.0f && paddleangle[i] != 0.0f && paddleangle[i] > 300) {
+				paddleangle[i] += 6.0f;
+			}
 		}
-		std::cout << "o paddleangle e: " << paddleangle << "\n";
-	}
-	else if (paddlemoving == true) {
-		paddleangle += 6.0f;
+		
+		//std::cout << "o paddleangle e: " << paddleangle << "\n";
 	}
 	glutPostRedisplay();
 }
@@ -229,11 +233,11 @@ void renderBoat(void) {
 		glDrawElements(boatMeshes[0].type, boatMeshes[0].numIndexes, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
-		//render the cone mesh attached to the cube
+		//render the pawn mesh attached to the cube
 		pushMatrix(MODEL);
 		{	
 			translate(MODEL, 0.5f, 1.0f, 0.5f); //translate to the top of the parent mesh
-			scale(MODEL, 0.5f, 0.5f, 0.5f); //scale the cone
+			scale(MODEL, 0.3f, 0.3f, 0.3f); //scale the pawn
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 			glUniform4fv(loc, 1, boatMeshes[1].mat.ambient);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -261,24 +265,24 @@ void renderBoat(void) {
 		for (uint16_t i = 0; i < 2; i++) {
 			pushMatrix(MODEL);
 			{
-				if (i == 0) {
+				if (i == 0) { // paddle da direita em relação à posição inicial da camara
 					translate(MODEL, 0.5f, 0.35f, -0.25f);
 					rotate(MODEL, 60.0f, 1.0f, 0.0f, 0.0f); // com estas duas rotações a pá fica na posição correta e com a rotação correta
 					rotate(MODEL, 90.0f, 0.0f, 1.0f, 0.0f);
-					rotate(MODEL, paddleangle, 0.075f * direction, 0.2f * direction, 0.0f);
+					rotate(MODEL, paddleangle[i], 0.075f * direction, 0.2f * direction, 0.0f);
 				}
-				else {
-					translate(MODEL, 0.5f, 0.35f, 1.25f);
+				else { // paddle da esquerda em relação à posição inicial da camara
+					translate(MODEL, 0.5f, 0.35f, 1.25f); 
 					rotate(MODEL, 300.0f, 1.0f, 0.0f, 0.0f);
 					rotate(MODEL, 270.0f, 0.0f, 1.0f, 0.0f);
-					rotate(MODEL, paddleangle, -0.075f * direction, -0.2f * direction, 0.0f);
+					rotate(MODEL, paddleangle[i], -0.075f * direction, -0.2f * direction, 0.0f);
 				}
-				if (paddleangle == 354.0f) {
+				if (paddleangle[0] == 120.0f || paddleangle[1]==120.0f){
 					boatmovement = true;
 				}
-				else if (paddleangle == 360.0f) {
-					paddlemoving = false;
-					paddleangle = 0.0f;
+				else if (paddleangle[i] >= 360.0f) {
+					paddlemoving[i] = false;
+					paddleangle[i] = 0.0f;
 				}
 				
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
@@ -449,51 +453,6 @@ void renderScene(void) {
 		multMatrixPoint(VIEW, lightPos,res);   //lightPos definido em World Coord so is converted to eye space
 		glUniform4fv(lPos_uniformId, 1, res);
 
-	int objId=0; //id of the object mesh - to be used as index of mesh: Mymeshes[objID] means the current mesh
-
-	//for (int i = 0 ; i < myMeshes.size(); ++i) {
-	//		// send the material
-	//		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-	//		glUniform4fv(loc, 1, myMeshes[objId].mat.ambient);
-	//		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-	//		glUniform4fv(loc, 1, myMeshes[objId].mat.diffuse);
-	//		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-	//		glUniform4fv(loc, 1, myMeshes[objId].mat.specular);
-	//		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-	//		glUniform1f(loc, myMeshes[objId].mat.shininess);
-	//		pushMatrix(MODEL);
-	//		
-
-	//		if (i == 0) {
-	//			rotate(MODEL, 270.0f, 1.0f, 0.0f, 0.0f);
-	//			translate(MODEL, 0.0f, 0.0f, 0.0f);
-	//		}
-	//		else if (i==1){
-	//			translate(MODEL, -1.0f, 0.0f, 0.0f);
-	//		}
-	//		else {
-	//			translate(MODEL, i*1.2f*pow((-1), i), 0.8f, i * 1.2f* pow((-1), i));
-	//		}
-	//			
-
-
-	//		// send matrices to OGL
-	//		computeDerivedMatrix(PROJ_VIEW_MODEL);
-	//		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-	//		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-	//		computeNormalMatrix3x3();
-	//		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
-
-	//		// Render mesh
-	//		glBindVertexArray(myMeshes[objId].vao);
-	//		
-	//		glDrawElements(myMeshes[objId].type, myMeshes[objId].numIndexes, GL_UNSIGNED_INT, 0);
-	//		glBindVertexArray(0);
-
-	//		popMatrix(MODEL);
-	//		objId++;
-	//	
-	//}
 	renderPlain();
 	renderBoat();
 	renderRedCylinders();
@@ -560,17 +519,18 @@ void processKeys(unsigned char key, int xx, int yy)
 		break;
 	case 'a':
 		//mexer cubo segundo um angulo e velocidade para a esquerda
-		paddlemoving = true;
-		myBoat.speed += (0.4f*forceMultiplier);
-		myBoat.angularSpeed += (25.0f * forceMultiplier);
-		angleDecay = 0.5f;
+		paddlemoving[1] = true;
+		myBoat.speed += (0.6f * forceMultiplier);
+		myBoat.angularSpeed -= (30.0f * forceMultiplier);
+		angleDecay = -0.5f;
+		
 		break;
 	case 'd':
 		//mexer cubo segundo um angulo e velocidade para a direita
-		paddlemoving = true;
-		myBoat.speed += (0.4f*forceMultiplier);
-		myBoat.angularSpeed -= (25.0f * forceMultiplier);
-		angleDecay = -0.5f;
+		paddlemoving[0] = true;
+		myBoat.speed += (0.6f * forceMultiplier);
+		myBoat.angularSpeed += (30.0f * forceMultiplier);
+		angleDecay = 0.5f;
 		break;
 	case 's':
 		//toggle inverter direção frente/trás
@@ -580,13 +540,8 @@ void processKeys(unsigned char key, int xx, int yy)
 		}
 		break;
 	case 'o':
-		//toggle on/off multiplicador de força
-		if (forceMultiplier == 1.0f) {
-			forceMultiplier = 2.0f;
-		}
-		else {
-			forceMultiplier = 1.0f;
-		}
+		//duplica a força atual das remadas
+		forceMultiplier = forceMultiplier * 2.0f;
 		break;
 
 	}
@@ -676,10 +631,12 @@ void mouseWheel(int wheel, int direction, int x, int y) {
 	r += direction * 0.1f;
 	if (r < 0.1f)
 		r = 0.1f;
-
-	cams[activeCamera].camPos[0] = r * sin(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
-	cams[activeCamera].camPos[2] = r * cos(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
-	cams[activeCamera].camPos[1] = r *   						     sin(beta * 3.14f / 180.0f);
+	if (activeCamera == 0) {
+		cams[activeCamera].camPos[0] = r * sin(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
+		cams[activeCamera].camPos[2] = r * cos(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
+		cams[activeCamera].camPos[1] = r * sin(beta * 3.14f / 180.0f);
+	}
+	
 
 //  uncomment this if not using an idle or refresh func
 //	glutPostRedisplay();
