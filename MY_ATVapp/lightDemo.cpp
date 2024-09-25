@@ -52,6 +52,8 @@ const string font_name = "fonts/arial.ttf";
 //Vector with meshes
 vector<struct MyMesh> myMeshes;
 vector<struct MyMesh> boatMeshes;
+vector<struct MyMesh> floats;
+vector<struct MyMesh> floatCylinders;
 
 //External array storage defined in AVTmathLib.cpp
 
@@ -98,6 +100,16 @@ float deltaT = 0.1f;
 float direction = 1.0f;
 float forceMultiplier = 1.0f;
 
+float floatPositions[6][3] = {
+	{3.0f, 0.0f, 6.0f},
+	{-15.0f, 0.0f, -10.0f},
+	{5.0f, 0.0f, 13.0f},
+	{-9.0f, 0.0f, -5.0f},
+	{-12.0f, 0.0f, 9.0f},
+	{10.0f, 0.0f, -8.0f}
+
+};
+
 //cameras
 
 camera cams[3];
@@ -133,38 +145,32 @@ void updateBoat(int direction) {
 			paddleangle[i] += 6.0f;
 		}
 	}
-		
-
-	if (boatmovement == true) { 
-		myBoat.angle += (myBoat.angularSpeed * deltaT) * direction;
-		float radians = myBoat.angle * 3.14f / 180.0f;
-		myBoat.direction[0] = cos(radians);
-		myBoat.direction[2] = sin(radians);
-		myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction; //subtração porque assim a combinação do cosseno e seno dá a direção correta
-		myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction; 
-		myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
-		myBoat.speed -= speedDecay;
-		if (myBoat.speed < 0.0f) {
-			myBoat.speed = 0.0f;
-			canChangeDirection = true;
-			boatmovement = false;
-
-		}
-		else {
-			canChangeDirection = false;
-		}
-		myBoat.angularSpeed -= angleDecay;
-		if (myBoat.angularSpeed < 0.001f || myBoat.angularSpeed>-0.001f) {
-			myBoat.angularSpeed = 0.0f;
-		}
-		for (uint16_t i = 0; i < 2; i++) {
-			if (paddleangle[i] != 360.0f && paddleangle[i] != 0.0f && paddleangle[i] > 300) {
-				paddleangle[i] += 6.0f;
-			}
-		}
-		
-		//std::cout << "o paddleangle e: " << paddleangle << "\n";
+	myBoat.angle += (myBoat.angularSpeed * deltaT) * direction;
+	float radians = myBoat.angle * 3.14f / 180.0f;
+	myBoat.direction[0] = cos(radians);
+	myBoat.direction[2] = sin(radians);
+	myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction; //subtração porque assim a combinação do cosseno e seno dá a direção correta
+	myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction; 
+	myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
+	myBoat.speed -= speedDecay;
+	if (myBoat.speed < 0.0f) {
+		myBoat.speed = 0.0f;
+		canChangeDirection = true;
 	}
+	else {
+		canChangeDirection = false;
+	}
+	myBoat.angularSpeed -= angleDecay;
+	if (myBoat.angularSpeed < 0.001f || myBoat.angularSpeed>-0.001f) {
+		myBoat.angularSpeed = 0.0f;
+	}
+	for (uint16_t i = 0; i < 2; i++) {
+		if (paddleangle[i] != 360.0f && paddleangle[i] != 0.0f && paddleangle[i] > 300) {
+			paddleangle[i] += 6.0f;
+		}
+	}
+		
+	//std::cout << "o paddleangle e: " << paddleangle << "\n";
 	glutPostRedisplay();
 }
 
@@ -424,6 +430,63 @@ void renderRedCylinders(void) {
 	}
 }
 
+void renderFloats() {
+	GLint loc;
+	for (uint16_t i = 0; i < 6; i++) {
+		pushMatrix(MODEL);
+		{
+			translate(MODEL, floatPositions[i][0], floatPositions[i][1], floatPositions[i][2]);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+			glUniform4fv(loc, 1, floats[i].mat.ambient);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, floats[i].mat.diffuse);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+			glUniform4fv(loc, 1, floats[i].mat.specular);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+			glUniform1f(loc, floats[i].mat.shininess);
+
+			//compute and send the matrices to the shader
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+			//render the parent mesh
+			glBindVertexArray(floats[i].vao);
+			glDrawElements(floats[i].type, floats[i].numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+			pushMatrix(MODEL);
+			{
+				translate(MODEL, 0.0f, 1.0f, 0.0f);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+				glUniform4fv(loc, 1, floatCylinders[i].mat.ambient);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+				glUniform4fv(loc, 1, floatCylinders[i].mat.diffuse);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+				glUniform4fv(loc, 1, floatCylinders[i].mat.specular);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+				glUniform1f(loc, floatCylinders[i].mat.shininess);
+
+				//compute and send the matrices to the shader
+				computeDerivedMatrix(PROJ_VIEW_MODEL);
+				glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+				glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+				computeNormalMatrix3x3();
+				glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+				//render the parent mesh
+				glBindVertexArray(floatCylinders[i].vao);
+				glDrawElements(floatCylinders[i].type, floatCylinders[i].numIndexes, GL_UNSIGNED_INT, 0);
+				glBindVertexArray(0);
+			}
+			popMatrix(MODEL);
+		}
+		popMatrix(MODEL);
+	}
+	
+}
+
 void renderScene(void) {
 
 	GLint loc;
@@ -491,6 +554,7 @@ void renderScene(void) {
 	renderPlain();
 	renderBoat();
 	renderRedCylinders();
+	renderFloats();
 	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
 	glDisable(GL_DEPTH_TEST);
 	//the glyph contains transparent background colors and non-transparent for the actual character pixels. So we use the blending
@@ -546,23 +610,22 @@ void processKeys(unsigned char key, int xx, int yy)
 	case 'a':
 		//mexer cubo segundo um angulo e velocidade para a esquerda
 		paddlemoving[1] = true;
-		myBoat.speed += (0.6f * forceMultiplier);
-		myBoat.angularSpeed -= (45.0f * forceMultiplier);
+		myBoat.speed = (0.6f * forceMultiplier);
+		myBoat.angularSpeed = (-45.0f * forceMultiplier);
 		angleDecay = -0.5f;
 		
 		break;
 	case 'd':
 		//mexer cubo segundo um angulo e velocidade para a direita
 		paddlemoving[0] = true;
-		myBoat.speed += (0.6f * forceMultiplier);
-		myBoat.angularSpeed += (45.0f * forceMultiplier);
+		myBoat.speed = (0.6f * forceMultiplier);
+		myBoat.angularSpeed = (45.0f * forceMultiplier);
 		angleDecay = 0.5f;
 		break;
 	case 's':
 		//toggle inverter direção frente/trás
 		if (canChangeDirection) {
 			direction = direction * (-1.0f);
-			canChangeDirection = false;
 		}
 		break;
 	case 'o':
@@ -572,7 +635,7 @@ void processKeys(unsigned char key, int xx, int yy)
 	case 'n':
 		//ligar ou desligar a luz direcional (dayTime)
 		dayTime = !dayTime;
-		std::cout << "dayTime: " << dayTime << "\n";
+		//std::cout << "dayTime: " << dayTime << "\n";
 		break;
 	}
 }
@@ -880,6 +943,26 @@ void init()
 		amesh.mat.shininess = shininess;
 		amesh.mat.texCount = texcount;
 		myMeshes.push_back(amesh);
+	}
+	//create geometry for floating spheres with poles as poles
+	for (uint16_t i = 0; i < 6; i++) {
+		amesh = createSphere(0.5f, 20);
+		memcpy(amesh.mat.ambient, amb1, 4 * sizeof(float));
+		memcpy(amesh.mat.diffuse, diff1, 4 * sizeof(float));
+		memcpy(amesh.mat.specular, spec1, 4 * sizeof(float));
+		memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+		amesh.mat.shininess = shininess;
+		amesh.mat.texCount = texcount;
+		floats.push_back(amesh);
+
+		amesh = createCylinder(2.0f, 0.25f, 20);
+		memcpy(amesh.mat.ambient, amb1, 4 * sizeof(float));
+		memcpy(amesh.mat.diffuse, diff1, 4 * sizeof(float));
+		memcpy(amesh.mat.specular, spec1, 4 * sizeof(float));
+		memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+		amesh.mat.shininess = shininess;
+		amesh.mat.texCount = texcount;
+		floatCylinders.push_back(amesh);
 	}
 
 
