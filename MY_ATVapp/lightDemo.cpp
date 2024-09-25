@@ -110,6 +110,16 @@ float floatPositions[6][3] = {
 
 };
 
+float waterCreaturesPositions[6][3] = {
+	{5.0f, 0.0f, 5.0f},
+	{-7.0f, 0.0f, -6.0f},
+	{8.0f, 0.0f, 6.0f},
+	{-3.0f, 0.0f, 18.0f},
+	{-6.0f, 0.0f, 5.0f},
+	{5.0f, 0.0f, -11.0f}
+
+};
+
 //cameras
 
 camera cams[3];
@@ -132,7 +142,7 @@ float DirectlightPos[4] = {1.0f, 100.0f, 1.0f, 0.0f}; //directonal light
 
 
 
-float pointLights[6][4] = { {0.0f, 4.0f, 15.0f, 1.0f}, {-20.0f, 4.0f, -20.0f, 1.0f}, {7.0f, 4.0f, -8.0f, 1.0f}, {1.0f, 4.0f, 8.0f, 1.0f}, {-3.0f, 4.0f, 11.0f, 1.0f}, {5.0f, 4.0f, 7.0f, 1.0f} };
+float pointLights[6][4] = { {floatPositions[0][0], 4.0f, floatPositions[0][2], 1.0f}, {floatPositions[1][0], 4.0f, floatPositions[1][2], 1.0f}, {floatPositions[2][0], 4.0f, floatPositions[2][2], 1.0f}, {floatPositions[3][0], 4.0f, floatPositions[3][2], 1.0f}, {floatPositions[4][0], 4.0f, floatPositions[4][2], 1.0f}, {floatPositions[5][0], 4.0f, floatPositions[5][2], 1.0f}};
 float aux = 0;
 float paddleangle[2] = {0.0f, 0.0f};
 bool paddlemoving[2] = {false, false};
@@ -386,25 +396,9 @@ void renderRedCylinders(void) {
 	for (uint16_t i = 1; i < 7; i++) {
 		pushMatrix(MODEL);
 		{	
-			if (i == 1) {
-				translate(MODEL, -8.0f, -0.4f, -8.0f);
-			}
-			else if (i == 2) {
-				translate(MODEL, -8.0f, -0.4f, 8.0f);
-			}
-			else if (i == 3) {
-				translate(MODEL, 8.0f, -0.4f, -8.0f);
-			}
-			else if (i == 4) {
-				translate(MODEL, 8.0f, -0.4f, 8.0f);
-			}
-			else if (i == 5) {
-				translate(MODEL, 0.0f, -0.4f, -8.0f);
-			}
-			else {
-				translate(MODEL, 0.0f, -0.4f, 8.0f);
-			}
+			translate(MODEL, waterCreaturesPositions[i - 1][0], waterCreaturesPositions[i - 1][1]-0.4f, waterCreaturesPositions[i - 1][2]);
 			rotate(MODEL, 90.0f, 1.0f, 0.0f, 0.0f);
+			//rotate(MODEL, 30.0f, 0.0f, 0.0f, 1.0f);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 			glUniform4fv(loc, 1, myMeshes[i].mat.ambient);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
