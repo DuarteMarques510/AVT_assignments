@@ -20,7 +20,7 @@ struct PointLight {
 };
 
 struct DirectionalLight {
-	vec3 direction;
+	vec4 direction;
 };
 
 struct SpotLight {
@@ -45,7 +45,7 @@ void main() {
 	vec4 spec = vec4(0.0);
 
 	vec3 n = normalize(DataIn.normal);
-	vec3 l = normalize(DataIn.lightDir);
+	vec3 l = normalize(vec3(dirLight.direction));
 	vec3 e = normalize(DataIn.eye);
 
 	float intensity = max(dot(n,l), 0.0);

@@ -104,6 +104,7 @@ camera cams[3];
 int activeCamera = 0;
 
 bool canChangeDirection = true; //when true the boat can change direction, starts at true because the boat starts at speed 0
+bool dayTime = true;
 
 // Mouse Tracking Variables
 int startX, startY, tracking = 0;
@@ -115,7 +116,9 @@ float r = 10.0f;
 // Frame counting and FPS computation
 long myTime,timebase = 0,frame = 0;
 char s[32];
-float lightPos[4] = {4.0f, 6.0f, 2.0f, 0.0f}; //directonal light
+float DirectlightPos[4] = {1.0f, 100.0f, 1.0f, 0.0f}; //directonal light
+
+
 
 float pointLights[6][4] = { {0.0f, 4.0f, 15.0f, 1.0f}, {-20.0f, 4.0f, -20.0f, 1.0f}, {7.0f, 4.0f, -8.0f, 1.0f}, {1.0f, 4.0f, 8.0f, 1.0f}, {-3.0f, 4.0f, 11.0f, 1.0f}, {5.0f, 4.0f, 7.0f, 1.0f} };
 float aux = 0;
@@ -395,7 +398,7 @@ void renderRedCylinders(void) {
 			else {
 				translate(MODEL, 0.0f, -0.4f, 8.0f);
 			}
-			rotate(MODEL, 60.0f, 1.0f, 0.0f, 0.0f);
+			rotate(MODEL, 90.0f, 1.0f, 0.0f, 0.0f);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 			glUniform4fv(loc, 1, myMeshes[i].mat.ambient);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -432,6 +435,16 @@ void renderScene(void) {
 	// load identity matrices
 	loadIdentity(VIEW);
 	loadIdentity(MODEL);
+
+	if (activeCamera == 0) {
+		cams[activeCamera].camPos[0] = myBoat.position[0] + 10.0f;
+		cams[activeCamera].camPos[2] = myBoat.position[2];
+		cams[activeCamera].camPos[1] = myBoat.position[1] + 5.0f;
+		cams[activeCamera].camTarget[0] = myBoat.position[0];
+		cams[activeCamera].camTarget[1] = myBoat.position[1];
+		cams[activeCamera].camTarget[2] = myBoat.position[2];
+
+	}
 	// set the camera using a function similar to gluLookAt
 	lookAt(cams[activeCamera].camPos[0], cams[activeCamera].camPos[1], cams[activeCamera].camPos[2], cams[activeCamera].camTarget[0], cams[activeCamera].camTarget[1], cams[activeCamera].camTarget[2], 0, 1, 0);
 	
@@ -443,7 +456,7 @@ void renderScene(void) {
 	}
 	else {
 		//orthogonal camera
-		ortho(ratio * (-10), ratio * 10, -10, 10, 0.1f, 20); //left, right, bottom, top
+		ortho(ratio * (-20), ratio * 20, -20, 20, 0.1f, 20); //left, right, bottom, top
 	}
 
 	// use our shader
@@ -455,8 +468,24 @@ void renderScene(void) {
 
 	float res[4];
 	
-	multMatrixPoint(VIEW, pointLights[0], res);   //lightPos definido em World Coord so is converted to eye space
-	glUniform4fv(point_loc, 1, res);
+	//multMatrixPoint(VIEW, lightPos, res);   //lightPos definido em World Coord so is converted to eye space
+	//glUniform4fv(lPos_uniformId, 1, res);
+	if (dayTime) {
+		multMatrixPoint(VIEW, DirectlightPos, res);
+		glUniform4fv(direc_loc, 1, res);
+	}
+	multMatrixPoint(VIEW, pointLights[0], res);
+	glUniform4fv(point_loc, 1, pointLights[0]);
+	multMatrixPoint(VIEW, pointLights[1], res);
+	glUniform4fv(point_loc1, 1, pointLights[1]);
+	multMatrixPoint(VIEW, pointLights[2], res);
+	glUniform4fv(point_loc2, 1, pointLights[2]);
+	multMatrixPoint(VIEW, pointLights[3], res);
+	glUniform4fv(point_loc3, 1, pointLights[3]);
+	multMatrixPoint(VIEW, pointLights[4], res);
+	glUniform4fv(point_loc4, 1, pointLights[4]);
+	multMatrixPoint(VIEW, pointLights[5], res);
+
 		
 
 	renderPlain();
@@ -505,7 +534,6 @@ void processKeys(unsigned char key, int xx, int yy)
 		printf("Camera Spherical Coordinates (%f, %f, %f)\n", alpha, beta, r);
 		break;
 	case 'm': glEnable(GL_MULTISAMPLE); break;
-	case 'n': glDisable(GL_MULTISAMPLE); break;
 	case '1':
 		activeCamera = 0;
 		break;
@@ -519,7 +547,7 @@ void processKeys(unsigned char key, int xx, int yy)
 		//mexer cubo segundo um angulo e velocidade para a esquerda
 		paddlemoving[1] = true;
 		myBoat.speed += (0.6f * forceMultiplier);
-		myBoat.angularSpeed -= (30.0f * forceMultiplier);
+		myBoat.angularSpeed -= (45.0f * forceMultiplier);
 		angleDecay = -0.5f;
 		
 		break;
@@ -527,7 +555,7 @@ void processKeys(unsigned char key, int xx, int yy)
 		//mexer cubo segundo um angulo e velocidade para a direita
 		paddlemoving[0] = true;
 		myBoat.speed += (0.6f * forceMultiplier);
-		myBoat.angularSpeed += (30.0f * forceMultiplier);
+		myBoat.angularSpeed += (45.0f * forceMultiplier);
 		angleDecay = 0.5f;
 		break;
 	case 's':
@@ -541,7 +569,11 @@ void processKeys(unsigned char key, int xx, int yy)
 		//duplica a força atual das remadas
 		forceMultiplier = forceMultiplier * 2.0f;
 		break;
-
+	case 'n':
+		//ligar ou desligar a luz direcional (dayTime)
+		dayTime = !dayTime;
+		std::cout << "dayTime: " << dayTime << "\n";
+		break;
 	}
 }
 
@@ -613,9 +645,9 @@ void processMouseMotion(int xx, int yy)
 			rAux = 0.1f;
 	}
 	if (activeCamera == 0) {
-		cams[0].camPos[0] = myBoat.position[0] + rAux * sin(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
-		cams[0].camPos[2] = myBoat.position[2] + rAux * cos(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
-		cams[0].camPos[1] = myBoat.position[1] + rAux * sin(betaAux * 3.14f / 180.0f);
+		cams[0].camPos[0] =  rAux * sin(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
+		cams[0].camPos[2] =  rAux * cos(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
+		cams[0].camPos[1] =  rAux * sin(betaAux * 3.14f / 180.0f);
 	}
 	
 
@@ -630,9 +662,9 @@ void mouseWheel(int wheel, int direction, int x, int y) {
 	if (r < 0.1f)
 		r = 0.1f;
 	if (activeCamera == 0) {
-		cams[activeCamera].camPos[0] = myBoat.position[0] + r * sin(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
-		cams[activeCamera].camPos[2] = myBoat.position[2] + r * cos(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
-		cams[activeCamera].camPos[1] = myBoat.position[1] + r * sin(beta * 3.14f / 180.0f);
+		cams[activeCamera].camPos[0] = r * sin(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
+		cams[activeCamera].camPos[2] = r * cos(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
+		cams[activeCamera].camPos[1] = r * sin(beta * 3.14f / 180.0f);
 	}
 	
 
@@ -681,7 +713,7 @@ GLuint setupShaders() {
 	point_loc5 = glGetUniformLocation(shader.getProgramIndex(), "pointLights[5].position");
 	spot_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLight[0].position");
 	spot_loc1 = glGetUniformLocation(shader.getProgramIndex(), "spotLight[1].position");
-	direc_loc = glGetUniformLocation(shader.getProgramIndex(), "dirLight.position");
+	direc_loc = glGetUniformLocation(shader.getProgramIndex(), "dirLight.direction");
 	tex_loc = glGetUniformLocation(shader.getProgramIndex(), "texmap0");
 	tex_loc1 = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
 	tex_loc2 = glGetUniformLocation(shader.getProgramIndex(), "texmap2");
@@ -713,12 +745,12 @@ GLuint setupShaders() {
 void init()
 {
 	MyMesh amesh;
-	cams[0].camPos[1] = 10.0f;
+	/*cams[0].camPos[1] = 10.0f;
 	cams[0].camTarget[0] = myBoat.position[0];
 	cams[0].camTarget[1] = myBoat.position[1];
-	cams[0].camTarget[2] = myBoat.position[2];
+	cams[0].camTarget[2] = myBoat.position[2];*/
 	cams[1].camPos[0] = 0.01f;
-	cams[1].camPos[1] = 5.0f;
+	cams[1].camPos[1] = 18.0f;
 	cams[1].camPos[2] = 0.0f;
 	cams[1].type = 1; //orthogonal camera
 	cams[2].camPos[0] = 0.01f;
