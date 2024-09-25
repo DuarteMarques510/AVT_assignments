@@ -1,5 +1,9 @@
 #version 430
 
+uniform sampler2D texmap0;
+uniform sampler2D texmap1;
+uniform sampler2D texmap2;
+
 out vec4 colorOut;
 
 struct Materials {
@@ -11,7 +15,24 @@ struct Materials {
 	int texCount;
 };
 
+struct PointLight {
+	vec4 position;
+};
+
+struct DirectionalLight {
+	vec3 direction;
+};
+
+struct SpotLight {
+	vec4 position;
+	float angle;
+	vec3 direction;
+};
+
 uniform Materials mat;
+uniform PointLight pointLights[6];
+uniform SpotLight spotLights[2];
+uniform DirectionalLight dirLight;
 
 in Data {
 	vec3 normal;

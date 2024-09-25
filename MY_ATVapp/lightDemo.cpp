@@ -67,6 +67,9 @@ GLint vm_uniformId;
 GLint normal_uniformId;
 GLint lPos_uniformId;
 GLint tex_loc, tex_loc1, tex_loc2;
+GLint point_loc, point_loc1, point_loc2, point_loc3, point_loc4, point_loc5;
+GLint spot_loc, spot_loc1;
+GLint direc_loc;
 	
 // Camera Position
 //float cams[activeCamera].camPos[0], cams[activeCamera].camPos[1], cams[activeCamera].camPos[2];
@@ -112,8 +115,9 @@ float r = 10.0f;
 // Frame counting and FPS computation
 long myTime,timebase = 0,frame = 0;
 char s[32];
-float lightPos[4] = {4.0f, 6.0f, 2.0f, 1.0f};
+float lightPos[4] = {4.0f, 6.0f, 2.0f, 0.0f}; //directonal light
 
+float pointLights[6][4] = { {0.0f, 4.0f, 15.0f, 1.0f}, {-20.0f, 4.0f, -20.0f, 1.0f}, {7.0f, 4.0f, -8.0f, 1.0f}, {1.0f, 4.0f, 8.0f, 1.0f}, {-3.0f, 4.0f, 11.0f, 1.0f}, {5.0f, 4.0f, 7.0f, 1.0f} };
 float aux = 0;
 float paddleangle[2] = {0.0f, 0.0f};
 bool paddlemoving[2] = {false, false};
@@ -449,9 +453,11 @@ void renderScene(void) {
 		//send the light position in eye coordinates
 		//glUniform4fv(lPos_uniformId, 1, lightPos); //efeito capacete do mineiro, ou seja lighPos foi definido em eye coord 
 
-		float res[4];
-		multMatrixPoint(VIEW, lightPos,res);   //lightPos definido em World Coord so is converted to eye space
-		glUniform4fv(lPos_uniformId, 1, res);
+	float res[4];
+	
+	multMatrixPoint(VIEW, pointLights[0], res);   //lightPos definido em World Coord so is converted to eye space
+	glUniform4fv(point_loc, 1, res);
+		
 
 	renderPlain();
 	renderBoat();
@@ -468,14 +474,6 @@ void renderScene(void) {
 	loadIdentity(MODEL);
 	pushMatrix(PROJECTION);
 	loadIdentity(PROJECTION);
-	//if (cams[activeCamera].type == 0) {
-	//	//perspective camera
-	//	perspective(53.13f, 1.0f, 0.1f, 1000.0f);
-	//}
-	//else {
-	//	//orthogonal camera
-	//	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
-	//}
 	pushMatrix(VIEW);
 	loadIdentity(VIEW);
 	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
@@ -615,9 +613,9 @@ void processMouseMotion(int xx, int yy)
 			rAux = 0.1f;
 	}
 	if (activeCamera == 0) {
-		cams[0].camPos[0] = rAux * sin(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
-		cams[0].camPos[2] = rAux * cos(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
-		cams[0].camPos[1] = rAux * sin(betaAux * 3.14f / 180.0f);
+		cams[0].camPos[0] = myBoat.position[0] + rAux * sin(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
+		cams[0].camPos[2] = myBoat.position[2] + rAux * cos(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
+		cams[0].camPos[1] = myBoat.position[1] + rAux * sin(betaAux * 3.14f / 180.0f);
 	}
 	
 
@@ -632,9 +630,9 @@ void mouseWheel(int wheel, int direction, int x, int y) {
 	if (r < 0.1f)
 		r = 0.1f;
 	if (activeCamera == 0) {
-		cams[activeCamera].camPos[0] = r * sin(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
-		cams[activeCamera].camPos[2] = r * cos(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
-		cams[activeCamera].camPos[1] = r * sin(beta * 3.14f / 180.0f);
+		cams[activeCamera].camPos[0] = myBoat.position[0] + r * sin(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
+		cams[activeCamera].camPos[2] = myBoat.position[2] + r * cos(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
+		cams[activeCamera].camPos[1] = myBoat.position[1] + r * sin(beta * 3.14f / 180.0f);
 	}
 	
 
@@ -652,10 +650,10 @@ GLuint setupShaders() {
 
 	// Shader for models
 	shader.init();
-	//shader.loadShader(VSShaderLib::VERTEX_SHADER, "shaders/pointlight_phong.vert");
-	//shader.loadShader(VSShaderLib::FRAGMENT_SHADER, "shaders/pointlight_phong.frag");
-	shader.loadShader(VSShaderLib::VERTEX_SHADER, "shaders/pointlight_Gouraud.vert");
-	shader.loadShader(VSShaderLib::FRAGMENT_SHADER, "shaders/pointlight_Gouraud.frag");
+	shader.loadShader(VSShaderLib::VERTEX_SHADER, "shaders/pointlight_phong.vert");
+	shader.loadShader(VSShaderLib::FRAGMENT_SHADER, "shaders/pointlight_phong.frag");
+	//shader.loadShader(VSShaderLib::VERTEX_SHADER, "shaders/pointlight_Gouraud.vert");
+	//shader.loadShader(VSShaderLib::FRAGMENT_SHADER, "shaders/pointlight_Gouraud.frag");
 
 	// set semantics for the shader variables
 	glBindFragDataLocation(shader.getProgramIndex(), 0,"colorOut");
@@ -675,7 +673,16 @@ GLuint setupShaders() {
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
 	lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "l_pos");
-	tex_loc = glGetUniformLocation(shader.getProgramIndex(), "texmap");
+	point_loc = glGetUniformLocation(shader.getProgramIndex(), "pointLights[0].position");
+	point_loc1 = glGetUniformLocation(shader.getProgramIndex(), "pointLights[1].position");
+	point_loc2 = glGetUniformLocation(shader.getProgramIndex(), "pointLights[2].position");
+	point_loc3 = glGetUniformLocation(shader.getProgramIndex(), "pointLights[3].position");
+	point_loc4 = glGetUniformLocation(shader.getProgramIndex(), "pointLights[4].position");
+	point_loc5 = glGetUniformLocation(shader.getProgramIndex(), "pointLights[5].position");
+	spot_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLight[0].position");
+	spot_loc1 = glGetUniformLocation(shader.getProgramIndex(), "spotLight[1].position");
+	direc_loc = glGetUniformLocation(shader.getProgramIndex(), "dirLight.position");
+	tex_loc = glGetUniformLocation(shader.getProgramIndex(), "texmap0");
 	tex_loc1 = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
 	tex_loc2 = glGetUniformLocation(shader.getProgramIndex(), "texmap2");
 	
@@ -749,7 +756,7 @@ void init()
 	float diff2[] = { 0.1f, 0.1f, 0.8f, 1.0f }; //cor difusa do plano  
 	float spec2[] = { 0.9f, 0.9f, 0.9f, 1.0f };
 
-	amesh = createQuad(20.0f, 20.0f); // create the plane for the scene
+	amesh = createQuad(40.0f, 40.0f); // create the plane for the scene
 	memcpy(amesh.mat.ambient, amb2, 4 * sizeof(float));
 	memcpy(amesh.mat.diffuse, diff2, 4 * sizeof(float));
 	memcpy(amesh.mat.specular, spec2, 4 * sizeof(float));
