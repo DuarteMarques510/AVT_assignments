@@ -149,7 +149,6 @@ float aux = 0;
 float paddleangle[2] = {0.0f, 0.0f};
 bool paddlemoving[2] = {false, false};
 int paddlesMoving = 0;
-bool boatmovement = false;
 
 void updateBoat(int direction) {
 
@@ -312,10 +311,7 @@ void renderBoat(void) {
 					rotate(MODEL, 270.0f, 0.0f, 1.0f, 0.0f);
 					rotate(MODEL, paddleangle[i], -0.075f * direction, -0.2f * direction, 0.0f);
 				}
-				if (paddleangle[0] == 120.0f || paddleangle[1]==120.0f){
-					boatmovement = true;
-				}
-				else if (paddleangle[i] >= 360.0f) {
+				if (paddleangle[i] >= 360.0f) {
 					//paddlemoving[i] = false;
 					paddleangle[i] = 0.0f;
 				}
