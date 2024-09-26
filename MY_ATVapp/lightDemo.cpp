@@ -54,6 +54,8 @@ vector<struct MyMesh> myMeshes;
 vector<struct MyMesh> boatMeshes;
 vector<struct MyMesh> floats;
 vector<struct MyMesh> floatCylinders;
+vector<struct MyMesh> islands;
+vector<struct MyMesh> islandTrees;
 
 //External array storage defined in AVTmathLib.cpp
 
@@ -146,6 +148,7 @@ float pointLights[6][4] = { {floatPositions[0][0], 4.0f, floatPositions[0][2], 1
 float aux = 0;
 float paddleangle[2] = {0.0f, 0.0f};
 bool paddlemoving[2] = {false, false};
+int paddlesMoving = 0;
 bool boatmovement = false;
 
 void updateBoat(int direction) {
@@ -155,10 +158,21 @@ void updateBoat(int direction) {
 			paddleangle[i] += 6.0f;
 		}
 	}
-	myBoat.angle += (myBoat.angularSpeed * deltaT) * direction;
-	float radians = myBoat.angle * 3.14f / 180.0f;
-	myBoat.direction[0] = cos(radians);
-	myBoat.direction[2] = sin(radians);
+	if (paddlemoving[1]) {
+		myBoat.speed = (0.6f * forceMultiplier);
+		myBoat.angularSpeed -= (20.0f * forceMultiplier);
+	}
+	if (paddlemoving[0]) {
+		myBoat.speed = (0.6f * forceMultiplier);
+		myBoat.angularSpeed += (20.0f * forceMultiplier);
+	}
+
+	if (!paddlemoving[1] || !paddlemoving[0]) { // se um dos dois remos não mexer atualizar a direção
+		myBoat.angle += (myBoat.angularSpeed * deltaT) * direction;
+		float radians = myBoat.angle * 3.14f / 180.0f;
+		myBoat.direction[0] = cos(radians);
+		myBoat.direction[2] = sin(radians);
+	}
 	myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction; //subtração porque assim a combinação do cosseno e seno dá a direção correta
 	myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction; 
 	myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
@@ -170,17 +184,15 @@ void updateBoat(int direction) {
 	else {
 		canChangeDirection = false;
 	}
-	myBoat.angularSpeed -= angleDecay;
 	if (myBoat.angularSpeed < 0.001f || myBoat.angularSpeed>-0.001f) {
 		myBoat.angularSpeed = 0.0f;
 	}
 	for (uint16_t i = 0; i < 2; i++) {
-		if (paddleangle[i] != 360.0f && paddleangle[i] != 0.0f && paddleangle[i] > 300) {
-			paddleangle[i] += 6.0f;
+		if (paddleangle[i] != 360.0f && paddleangle[i] != 0.0f) {
+			paddleangle[i] += 3.0f;
 		}
 	}
 		
-	//std::cout << "o paddleangle e: " << paddleangle << "\n";
 	glutPostRedisplay();
 }
 
@@ -304,7 +316,7 @@ void renderBoat(void) {
 					boatmovement = true;
 				}
 				else if (paddleangle[i] >= 360.0f) {
-					paddlemoving[i] = false;
+					//paddlemoving[i] = false;
 					paddleangle[i] = 0.0f;
 				}
 				
@@ -604,17 +616,10 @@ void processKeys(unsigned char key, int xx, int yy)
 	case 'a':
 		//mexer cubo segundo um angulo e velocidade para a esquerda
 		paddlemoving[1] = true;
-		myBoat.speed = (0.6f * forceMultiplier);
-		myBoat.angularSpeed = (-45.0f * forceMultiplier);
-		angleDecay = -0.5f;
-		
 		break;
 	case 'd':
 		//mexer cubo segundo um angulo e velocidade para a direita
 		paddlemoving[0] = true;
-		myBoat.speed = (0.6f * forceMultiplier);
-		myBoat.angularSpeed = (45.0f * forceMultiplier);
-		angleDecay = 0.5f;
 		break;
 	case 's':
 		//toggle inverter direção frente/trás
@@ -630,6 +635,18 @@ void processKeys(unsigned char key, int xx, int yy)
 		//ligar ou desligar a luz direcional (dayTime)
 		dayTime = !dayTime;
 		//std::cout << "dayTime: " << dayTime << "\n";
+		break;
+	}
+}
+
+void processKeysUp(unsigned char key, int xx, int yy)
+{
+	switch (key) {
+	case 'a':
+		paddlemoving[1] = false;
+		break;
+	case 'd':
+		paddlemoving[0] = false;
 		break;
 	}
 }
@@ -879,6 +896,11 @@ void init()
 	float amb1[] = { 0.3f, 0.0f, 0.0f, 1.0f }; //cor ambiente do cilindro
 	float diff1[] = { 0.8f, 0.1f, 0.1f, 1.0f }; //cor difusa do cilindro ou cor do material 
 	float spec1[] = {0.9f, 0.9f, 0.9f, 1.0f};
+
+	float amb3[] = { 0.0f, 0.3f, 0.0, 1.0f };
+	float diff3[] = { 0.1f, 0.8f, 0.1f, 1.0f };
+	float spec3[] = { 0.9f, 0.9f, 0.9f, 1.0f };
+
 	shininess=500.0;
 
 	//create geometry and VAO of the cube
@@ -959,6 +981,21 @@ void init()
 		floatCylinders.push_back(amesh);
 	}
 
+	//create the islands with trees
+	/*for (uint16_t i = 0; i < 3; i++) {
+		amesh = createSphere(5.0f, 20);
+		memcpy(amesh.mat.ambient, amb2, 4 * sizeof(float));
+		memcpy(amesh.mat.diffuse, diff2, 4 * sizeof(float));
+		memcpy(amesh.mat.specular, spec2, 4 * sizeof(float));
+		memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+		amesh.mat.shininess = shininess;
+		amesh.mat.texCount = texcount;
+		islands.push_back(amesh);
+
+
+
+	}*/
+
 
 	// some GL settings
 	glEnable(GL_DEPTH_TEST);
@@ -1000,6 +1037,7 @@ int main(int argc, char **argv) {
 
 //	Mouse and Keyboard Callbacks
 	glutKeyboardFunc(processKeys);
+	glutKeyboardUpFunc(processKeysUp);
 	glutMouseFunc(processMouseButtons);
 	glutMotionFunc(processMouseMotion);
 	glutMouseWheelFunc ( mouseWheel ) ;
