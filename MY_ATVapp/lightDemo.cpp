@@ -56,6 +56,7 @@ vector<struct MyMesh> floats;
 vector<struct MyMesh> floatCylinders;
 vector<struct MyMesh> islands;
 vector<struct MyMesh> islandTrees;
+vector<struct MyMesh> islandLeaves;
 
 //External array storage defined in AVTmathLib.cpp
 
@@ -88,7 +89,7 @@ public: int type = 0; //0 - perspective, 1 - ortho
 class boat {
 public: float speed = 0.0f;
 public: float direction[3] = { 1.0f, 0.0f, 0.0f }; //vetor diretor da direção do barco
-public: float position[3] = { 0.0f, 0.0f, 0.0f };
+public: float position[3] = { 25.0f, 0.0f, 0.0f };
 public: float angle = 0.0f;
 public: float angularSpeed = 0.0f;
 };
@@ -103,23 +104,30 @@ float direction = 1.0f;
 float forceMultiplier = 1.0f;
 
 float floatPositions[6][3] = {
-	{3.0f, 0.0f, 6.0f},
-	{-15.0f, 0.0f, -10.0f},
+	{11.0f, 0.0f, 2.0f},
+	{-30.0f, 0.0f, -20.0f},
 	{5.0f, 0.0f, 13.0f},
-	{-9.0f, 0.0f, -5.0f},
-	{-12.0f, 0.0f, 9.0f},
-	{10.0f, 0.0f, -8.0f}
+	{-18.0f, 0.0f, -10.0f},
+	{-24.0f, 0.0f, 18.0f},
+	{20.0f, 0.0f, -16.0f}
 
 };
 
 float waterCreaturesPositions[6][3] = {
-	{5.0f, 0.0f, 5.0f},
-	{-7.0f, 0.0f, -6.0f},
-	{8.0f, 0.0f, 6.0f},
-	{-3.0f, 0.0f, 18.0f},
-	{-6.0f, 0.0f, 5.0f},
-	{5.0f, 0.0f, -11.0f}
+	{10.0f, 0.0f, 10.0f},
+	{-14.0f, 0.0f, -12.0f},
+	{16.0f, 0.0f, 12.0f},
+	{-6.0f, 0.0f, 36.0f},
+	{-12.0f, 0.0f, 10.0f},
+	{10.0f, 0.0f, -22.0f}
 
+};
+
+float islandPositions[4][3] = {
+	{27.0f, 0.0f, -33.0f},
+	{-41.0f, 0.0f, 23.0f},
+	{36.0f, 0.0f, 9.0f},
+	{-20.0f, 0.0f, -40.0f}
 };
 
 //cameras
@@ -229,7 +237,14 @@ void changeSize(int w, int h) {
 	// set the projection matrix
 	ratio = (1.0f * w) / h;
 	loadIdentity(PROJECTION);
-	perspective(53.13f, ratio, 0.1f, 1000.0f);
+	if (cams[activeCamera].type == 0) {
+		//perspective camera
+		perspective(53.13f, ratio, 0.1f, 1000.0f);
+	}
+	else {
+		//orthogonal camera
+		ortho(ratio * (-55), ratio * 55, -55, 55, 0.1f, 55); //left, right, bottom, top
+	}
 }
 
 
@@ -489,6 +504,92 @@ void renderFloats() {
 	
 }
 
+void renderIslandsAndTrees() {
+	GLint loc;
+	for (uint16_t i = 0; i < islands.size(); i++) {
+		pushMatrix(MODEL);
+		{
+			translate(MODEL, islandPositions[i][0], islandPositions[i][1], islandPositions[i][2]);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+			glUniform4fv(loc, 1, islands[i].mat.ambient);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, islands[i].mat.diffuse);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+			glUniform4fv(loc, 1, islands[i].mat.specular);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+			glUniform1f(loc, islands[i].mat.shininess);
+
+			//compute and send the matrices to the shader
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+			//render the parent mesh
+			glBindVertexArray(islands[i].vao);
+			glDrawElements(islands[i].type, islands[i].numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+
+			pushMatrix(MODEL);
+			{
+				translate(MODEL, 0.0f, 5.0f, 0.0f);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+				glUniform4fv(loc, 1, islandTrees[i].mat.ambient);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+				glUniform4fv(loc, 1, islandTrees[i].mat.diffuse);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+				glUniform4fv(loc, 1, islandTrees[i].mat.specular);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+				glUniform1f(loc, islandTrees[i].mat.shininess);
+
+				//compute and send the matrices to the shader
+				computeDerivedMatrix(PROJ_VIEW_MODEL);
+				glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+				glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+				computeNormalMatrix3x3();
+				glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+				//render the parent mesh
+				glBindVertexArray(islandTrees[i].vao);
+				glDrawElements(islandTrees[i].type, islandTrees[i].numIndexes, GL_UNSIGNED_INT, 0);
+				glBindVertexArray(0);
+
+				pushMatrix(MODEL);
+				{
+					translate(MODEL, 0.0f, 1.0f, 0.0f);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+					glUniform4fv(loc, 1, islandLeaves[i].mat.ambient);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+					glUniform4fv(loc, 1, islandLeaves[i].mat.diffuse);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+					glUniform4fv(loc, 1, islandLeaves[i].mat.specular);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+					glUniform1f(loc, islandLeaves[i].mat.shininess);
+
+					//compute and send the matrices to the shader
+					computeDerivedMatrix(PROJ_VIEW_MODEL);
+					glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+					glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+					computeNormalMatrix3x3();
+					glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+					//render the parent mesh
+					glBindVertexArray(islandLeaves[i].vao);
+					glDrawElements(islandLeaves[i].type, islandLeaves[i].numIndexes, GL_UNSIGNED_INT, 0);
+					glBindVertexArray(0);
+				}
+				popMatrix(MODEL);
+
+			}
+			popMatrix(MODEL);
+		}
+		popMatrix(MODEL);
+
+	}
+
+}
+
 void renderScene(void) {
 
 	GLint loc;
@@ -504,7 +605,7 @@ void renderScene(void) {
 	if (activeCamera == 0) {
 		cams[activeCamera].camPos[0] = myBoat.position[0] + 10.0f;
 		cams[activeCamera].camPos[2] = myBoat.position[2];
-		cams[activeCamera].camPos[1] = myBoat.position[1] + 5.0f;
+		cams[activeCamera].camPos[1] = myBoat.position[1] + 3.0f;
 		cams[activeCamera].camTarget[0] = myBoat.position[0];
 		cams[activeCamera].camTarget[1] = myBoat.position[1];
 		cams[activeCamera].camTarget[2] = myBoat.position[2];
@@ -521,7 +622,7 @@ void renderScene(void) {
 	}
 	else {
 		//orthogonal camera
-		ortho(ratio * (-20), ratio * 20, -20, 20, 0.1f, 20); //left, right, bottom, top
+		ortho(ratio * (-55), ratio * 55, -55, 55, 0.1f, 55); //left, right, bottom, top
 	}
 
 	// use our shader
@@ -557,6 +658,7 @@ void renderScene(void) {
 	renderBoat();
 	renderRedCylinders();
 	renderFloats();
+	renderIslandsAndTrees();
 	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
 	glDisable(GL_DEPTH_TEST);
 	//the glyph contains transparent background colors and non-transparent for the actual character pixels. So we use the blending
@@ -815,16 +917,12 @@ GLuint setupShaders() {
 void init()
 {
 	MyMesh amesh;
-	/*cams[0].camPos[1] = 10.0f;
-	cams[0].camTarget[0] = myBoat.position[0];
-	cams[0].camTarget[1] = myBoat.position[1];
-	cams[0].camTarget[2] = myBoat.position[2];*/
 	cams[1].camPos[0] = 0.01f;
-	cams[1].camPos[1] = 18.0f;
+	cams[1].camPos[1] = 50.0f;
 	cams[1].camPos[2] = 0.0f;
 	cams[1].type = 1; //orthogonal camera
 	cams[2].camPos[0] = 0.01f;
-	cams[2].camPos[1] = 30.0f;
+	cams[2].camPos[1] = 100.0f;
 	cams[2].camPos[2] = 0.0f;
 
 	/* Initialization of DevIL */
@@ -858,7 +956,7 @@ void init()
 	float diff2[] = { 0.1f, 0.1f, 0.8f, 1.0f }; //cor difusa do plano  
 	float spec2[] = { 0.9f, 0.9f, 0.9f, 1.0f };
 
-	amesh = createQuad(40.0f, 40.0f); // create the plane for the scene
+	amesh = createQuad(100.0f, 100.0f); // create the plane for the scene
 	memcpy(amesh.mat.ambient, amb2, 4 * sizeof(float));
 	memcpy(amesh.mat.diffuse, diff2, 4 * sizeof(float));
 	memcpy(amesh.mat.specular, spec2, 4 * sizeof(float));
@@ -893,7 +991,7 @@ void init()
 	float diff1[] = { 0.8f, 0.1f, 0.1f, 1.0f }; //cor difusa do cilindro ou cor do material 
 	float spec1[] = {0.9f, 0.9f, 0.9f, 1.0f};
 
-	float amb3[] = { 0.0f, 0.3f, 0.0, 1.0f };
+	float amb3[] = { 0.0f, 0.3f, 0.0, 1.0f }; //green
 	float diff3[] = { 0.1f, 0.8f, 0.1f, 1.0f };
 	float spec3[] = { 0.9f, 0.9f, 0.9f, 1.0f };
 
@@ -978,19 +1076,35 @@ void init()
 	}
 
 	//create the islands with trees
-	/*for (uint16_t i = 0; i < 3; i++) {
+	for (uint16_t i = 0; i < 4; i++) {
 		amesh = createSphere(5.0f, 20);
-		memcpy(amesh.mat.ambient, amb2, 4 * sizeof(float));
-		memcpy(amesh.mat.diffuse, diff2, 4 * sizeof(float));
-		memcpy(amesh.mat.specular, spec2, 4 * sizeof(float));
+		memcpy(amesh.mat.ambient, amb3, 4 * sizeof(float));
+		memcpy(amesh.mat.diffuse, diff3, 4 * sizeof(float));
+		memcpy(amesh.mat.specular, spec3, 4 * sizeof(float));
 		memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
 		amesh.mat.shininess = shininess;
 		amesh.mat.texCount = texcount;
 		islands.push_back(amesh);
 
+		amesh = createCylinder(2.0f, 0.5f, 20);
+		memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
+		memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
+		memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
+		memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+		amesh.mat.shininess = shininess;
+		amesh.mat.texCount = texcount;
+		islandTrees.push_back(amesh);
 
+		amesh = createCone(2.0f, 1.0f, 20);
+		memcpy(amesh.mat.ambient, amb3, 4 * sizeof(float));
+		memcpy(amesh.mat.diffuse, diff3, 4 * sizeof(float));
+		memcpy(amesh.mat.specular, spec3, 4 * sizeof(float));
+		memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+		amesh.mat.shininess = shininess;
+		amesh.mat.texCount = texcount;
+		islandLeaves.push_back(amesh);
 
-	}*/
+	}
 
 
 	// some GL settings
