@@ -45,7 +45,7 @@ in Data {
 } DataIn;
 
 vec4 calculatePointLights(PointLight light, vec3 normal, vec3 viewDir) {
-	vec3 lightDir = normalize(vec3(light.position) - DataIn.eye);
+	vec3 lightDir = normalize(vec3(light.position) + DataIn.eye);
     float diff = max(dot(normal, lightDir), 0.0);
     
     vec3 reflectDir = reflect(-lightDir, normal);

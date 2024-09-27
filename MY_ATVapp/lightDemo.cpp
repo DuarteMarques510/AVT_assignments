@@ -74,6 +74,8 @@ GLint lPos_uniformId;
 GLint tex_loc, tex_loc1, tex_loc2;
 GLint point_loc, point_loc1, point_loc2, point_loc3, point_loc4, point_loc5;
 GLint spot_loc, spot_loc1;
+GLint spot_angle_loc, spot_angle_loc1;
+GLint spot_dir_loc, spot_dir_loc1;
 GLint direc_loc;
 GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc;
 	
@@ -123,6 +125,10 @@ float waterCreaturesPositions[6][3] = {
 	{10.0f, 0.0f, -22.0f}
 
 };
+
+float waterCreaturesAngles[6] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+
+float waterCreaturesSpeeds[6] = {0.2f, 0.1f, 0.05f, 0.3f, 0.25f, 0.15f};
 
 float islandPositions[4][3] = {
 	{27.0f, 0.0f, -33.0f},
@@ -204,6 +210,17 @@ void updateBoat(int direction) {
 	}
 		
 	glutPostRedisplay();
+}
+
+void animateWaterCreatures(int value) {
+	for (uint16_t i = 0; i < 6; i++) {
+		waterCreaturesAngles[i] += 2.0f;
+		if (waterCreaturesAngles[i] >= 360.0f) {
+			waterCreaturesAngles[i] = 0.0f;
+		}
+	}
+	glutPostRedisplay();
+	glutTimerFunc(1000 / 60, animateWaterCreatures, 0);
 }
 
 void timer(int value)
@@ -424,7 +441,7 @@ void renderRedCylinders(void) {
 		{	
 			translate(MODEL, waterCreaturesPositions[i - 1][0], waterCreaturesPositions[i - 1][1]-0.4f, waterCreaturesPositions[i - 1][2]);
 			rotate(MODEL, 90.0f, 1.0f, 0.0f, 0.0f);
-			//rotate(MODEL, 30.0f, 0.0f, 0.0f, 1.0f);
+			rotate(MODEL, waterCreaturesAngles[i-1], 0.0f, 0.0f, 1.0f);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 			glUniform4fv(loc, 1, myMeshes[i].mat.ambient);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -650,16 +667,17 @@ void renderScene(void) {
 	}
 	if (pointLightsOn) {
 		multMatrixPoint(VIEW, pointLights[0], res);
-		glUniform4fv(point_loc, 1, pointLights[0]);
+		glUniform4fv(point_loc, 1, res);
 		multMatrixPoint(VIEW, pointLights[1], res);
-		glUniform4fv(point_loc1, 1, pointLights[1]);
+		glUniform4fv(point_loc1, 1, res);
 		multMatrixPoint(VIEW, pointLights[2], res);
-		glUniform4fv(point_loc2, 1, pointLights[2]);
+		glUniform4fv(point_loc2, 1, res);
 		multMatrixPoint(VIEW, pointLights[3], res);
-		glUniform4fv(point_loc3, 1, pointLights[3]);
+		glUniform4fv(point_loc3, 1, res);
 		multMatrixPoint(VIEW, pointLights[4], res);
-		glUniform4fv(point_loc4, 1, pointLights[4]);
+		glUniform4fv(point_loc4, 1, res);
 		multMatrixPoint(VIEW, pointLights[5], res);
+		glUniform4fv(point_loc5, 1, res);
 	}
 	
 
@@ -902,6 +920,10 @@ GLuint setupShaders() {
 	point_loc5 = glGetUniformLocation(shader.getProgramIndex(), "pointLights[5].position");
 	spot_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLight[0].position");
 	spot_loc1 = glGetUniformLocation(shader.getProgramIndex(), "spotLight[1].position");
+	spot_angle_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLight[0].angle");
+	spot_angle_loc1 = glGetUniformLocation(shader.getProgramIndex(), "spotLight[1].angle");
+	spot_dir_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLight[0].direction");
+	spot_dir_loc1 = glGetUniformLocation(shader.getProgramIndex(), "spotLight[1].direction");
 	direc_loc = glGetUniformLocation(shader.getProgramIndex(), "dirLight.direction");
 	tex_loc = glGetUniformLocation(shader.getProgramIndex(), "texmap0");
 	tex_loc1 = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
@@ -1163,6 +1185,7 @@ int main(int argc, char **argv) {
 	//glutIdleFunc(renderScene);  // Use it for maximum performance
 	glutTimerFunc(0, refresh, 0);    //use it to to get 60 FPS whatever
 	//glutTimerFunc(0, updateBoat, direction);
+	glutTimerFunc(0, animateWaterCreatures, 0);
 
 //	Mouse and Keyboard Callbacks
 	glutKeyboardFunc(processKeys);
