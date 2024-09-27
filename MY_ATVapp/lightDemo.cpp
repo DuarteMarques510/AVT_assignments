@@ -75,6 +75,7 @@ GLint tex_loc, tex_loc1, tex_loc2;
 GLint point_loc, point_loc1, point_loc2, point_loc3, point_loc4, point_loc5;
 GLint spot_loc, spot_loc1;
 GLint direc_loc;
+GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc;
 	
 // Camera Position
 //float cams[activeCamera].camPos[0], cams[activeCamera].camPos[1], cams[activeCamera].camPos[2];
@@ -136,7 +137,9 @@ camera cams[3];
 int activeCamera = 0;
 
 bool canChangeDirection = true; //when true the boat can change direction, starts at true because the boat starts at speed 0
-bool dayTime = true;
+bool dayTime = false;
+bool pointLightsOn = false;
+bool spotLightsOn = false;
 
 // Mouse Tracking Variables
 int startX, startY, tracking = 0;
@@ -636,21 +639,29 @@ void renderScene(void) {
 	
 	//multMatrixPoint(VIEW, lightPos, res);   //lightPos definido em World Coord so is converted to eye space
 	//glUniform4fv(lPos_uniformId, 1, res);
+
+	glUniform1i(directOnOff_loc, dayTime); //send boolean variables to shader
+	glUniform1i(pointOnOff_loc, pointLightsOn);
+	glUniform1i(spotOnOff_loc, spotLightsOn);
+	
 	if (dayTime) {
 		multMatrixPoint(VIEW, DirectlightPos, res);
 		glUniform4fv(direc_loc, 1, res);
 	}
-	multMatrixPoint(VIEW, pointLights[0], res);
-	glUniform4fv(point_loc, 1, pointLights[0]);
-	multMatrixPoint(VIEW, pointLights[1], res);
-	glUniform4fv(point_loc1, 1, pointLights[1]);
-	multMatrixPoint(VIEW, pointLights[2], res);
-	glUniform4fv(point_loc2, 1, pointLights[2]);
-	multMatrixPoint(VIEW, pointLights[3], res);
-	glUniform4fv(point_loc3, 1, pointLights[3]);
-	multMatrixPoint(VIEW, pointLights[4], res);
-	glUniform4fv(point_loc4, 1, pointLights[4]);
-	multMatrixPoint(VIEW, pointLights[5], res);
+	if (pointLightsOn) {
+		multMatrixPoint(VIEW, pointLights[0], res);
+		glUniform4fv(point_loc, 1, pointLights[0]);
+		multMatrixPoint(VIEW, pointLights[1], res);
+		glUniform4fv(point_loc1, 1, pointLights[1]);
+		multMatrixPoint(VIEW, pointLights[2], res);
+		glUniform4fv(point_loc2, 1, pointLights[2]);
+		multMatrixPoint(VIEW, pointLights[3], res);
+		glUniform4fv(point_loc3, 1, pointLights[3]);
+		multMatrixPoint(VIEW, pointLights[4], res);
+		glUniform4fv(point_loc4, 1, pointLights[4]);
+		multMatrixPoint(VIEW, pointLights[5], res);
+	}
+	
 
 		
 
@@ -698,9 +709,9 @@ void processKeys(unsigned char key, int xx, int yy)
 		glutLeaveMainLoop();
 		break;
 
-	case 'c':
+	/*case 'c':
 		printf("Camera Spherical Coordinates (%f, %f, %f)\n", alpha, beta, r);
-		break;
+		break;*/
 	case 'm': glEnable(GL_MULTISAMPLE); break;
 	case '1':
 		activeCamera = 0;
@@ -733,6 +744,11 @@ void processKeys(unsigned char key, int xx, int yy)
 		//ligar ou desligar a luz direcional (dayTime)
 		dayTime = !dayTime;
 		//std::cout << "dayTime: " << dayTime << "\n";
+		break;
+	case 'c':
+		//toggle on/off the point lights
+		pointLightsOn = !pointLightsOn;
+		std::cout << "pointLightsOn: " << pointLightsOn << "\n";
 		break;
 	}
 }
@@ -870,6 +886,7 @@ GLuint setupShaders() {
 
 	if (!shader.isProgramValid()) {
 		printf("GLSL Model Program Not Valid!\n");
+		printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
 		exit(1);
 	}
 
@@ -889,8 +906,10 @@ GLuint setupShaders() {
 	tex_loc = glGetUniformLocation(shader.getProgramIndex(), "texmap0");
 	tex_loc1 = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
 	tex_loc2 = glGetUniformLocation(shader.getProgramIndex(), "texmap2");
+	directOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "dayTime");
+	pointOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "pointLightsOn");
+	spotOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLightsOn");
 	
-	printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
 
 	// Shader for bitmap Text
 	shaderText.init();
