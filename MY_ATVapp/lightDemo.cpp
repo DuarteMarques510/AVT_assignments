@@ -78,7 +78,7 @@ GLint spot_angle_loc, spot_angle_loc1;
 GLint spot_dir_loc, spot_dir_loc1;
 GLint direc_loc;
 GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc;
-	
+
 // Camera Position
 //float cams[activeCamera].camPos[0], cams[activeCamera].camPos[1], cams[activeCamera].camPos[2];
 
@@ -126,9 +126,11 @@ float waterCreaturesPositions[6][3] = {
 
 };
 
-float waterCreaturesAngles[6] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+float waterCreaturesRotationAngles[6];
 
-float waterCreaturesSpeeds[6] = {0.2f, 0.1f, 0.05f, 0.3f, 0.25f, 0.15f};
+float waterCreaturesAngles[6];
+
+float waterCreaturesSpeeds[6];
 
 float islandPositions[4][3] = {
 	{27.0f, 0.0f, -33.0f},
@@ -155,16 +157,16 @@ float alpha = 39.0f, beta = 51.0f;
 float r = 10.0f;
 
 // Frame counting and FPS computation
-long myTime,timebase = 0,frame = 0;
+long myTime, timebase = 0, frame = 0;
 char s[32];
-float DirectlightPos[4] = {1.0f, 100.0f, 1.0f, 0.0f}; //directonal light
+float DirectlightPos[4] = { 1.0f, 100.0f, 1.0f, 0.0f }; //directonal light
 
 
 
-float pointLights[6][4] = { {floatPositions[0][0], 4.0f, floatPositions[0][2], 1.0f}, {floatPositions[1][0], 4.0f, floatPositions[1][2], 1.0f}, {floatPositions[2][0], 4.0f, floatPositions[2][2], 1.0f}, {floatPositions[3][0], 4.0f, floatPositions[3][2], 1.0f}, {floatPositions[4][0], 4.0f, floatPositions[4][2], 1.0f}, {floatPositions[5][0], 4.0f, floatPositions[5][2], 1.0f}};
+float pointLights[6][4] = { {floatPositions[0][0], 4.0f, floatPositions[0][2], 1.0f}, {floatPositions[1][0], 4.0f, floatPositions[1][2], 1.0f}, {floatPositions[2][0], 4.0f, floatPositions[2][2], 1.0f}, {floatPositions[3][0], 4.0f, floatPositions[3][2], 1.0f}, {floatPositions[4][0], 4.0f, floatPositions[4][2], 1.0f}, {floatPositions[5][0], 4.0f, floatPositions[5][2], 1.0f} };
 float aux = 0;
-float paddleangle[2] = {0.0f, 0.0f};
-bool paddlemoving[2] = {false, false};
+float paddleangle[2] = { 0.0f, 0.0f };
+bool paddlemoving[2] = { false, false };
 int paddlesMoving = 0;
 
 void updateBoat(int direction) {
@@ -190,7 +192,7 @@ void updateBoat(int direction) {
 		myBoat.direction[2] = sin(radians);
 	}
 	myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction; //subtração porque assim a combinação do cosseno e seno dá a direção correta
-	myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction; 
+	myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
 	myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
 	myBoat.speed -= speedDecay;
 	if (myBoat.speed < 0.0f) {
@@ -208,17 +210,42 @@ void updateBoat(int direction) {
 			paddleangle[i] += 3.0f;
 		}
 	}
-		
+
 	glutPostRedisplay();
+}
+
+void accelerateCreatures(int value) {
+	for (uint16_t i = 0; i < 6; i++) {
+		waterCreaturesSpeeds[i] = waterCreaturesSpeeds[i] * 2;
+	}
+	glutPostRedisplay();
+	glutTimerFunc(30000, accelerateCreatures, 0);
+}
+
+void changeCreaturesAngle(int value) {
+	for (uint16_t i = 0; i < 6; i++) {
+		float angle = float((rand() % 181) + (waterCreaturesAngles[i] - 90));
+		waterCreaturesAngles[i] = angle;
+	}
+	glutPostRedisplay();
+	glutTimerFunc(5000, changeCreaturesAngle, 0);
 }
 
 void animateWaterCreatures(int value) {
 	for (uint16_t i = 0; i < 6; i++) {
-		waterCreaturesAngles[i] += 2.0f;
-		if (waterCreaturesAngles[i] >= 360.0f) {
-			waterCreaturesAngles[i] = 0.0f;
+		waterCreaturesRotationAngles[i] += 2.0f;
+		if (waterCreaturesRotationAngles[i] >= 360.0f) {
+			waterCreaturesRotationAngles[i] = 0.0f;
 		}
+		float radians = waterCreaturesAngles[i] * 3.14f / 180.0f;
+		if (waterCreaturesPositions[i][0] + (waterCreaturesSpeeds[i] * cos(radians) * deltaT) > 50 || waterCreaturesPositions[i][2] + (waterCreaturesSpeeds[i] * cos(radians) * deltaT) > 50 || waterCreaturesPositions[i][0] + (waterCreaturesSpeeds[i] * cos(radians) * deltaT) < -50 || waterCreaturesPositions[i][2] + (waterCreaturesSpeeds[i] * cos(radians) * deltaT) < -50) {
+			waterCreaturesPositions[i][0] = (rand() % 101) - 50;
+			waterCreaturesPositions[i][2] = (rand() % 101) - 50;
+		}
+		waterCreaturesPositions[i][0] += (waterCreaturesSpeeds[i] * cos(radians) * deltaT);
+		waterCreaturesPositions[i][2] += (waterCreaturesSpeeds[i] * sin(radians) * deltaT);
 	}
+
 	glutPostRedisplay();
 	glutTimerFunc(1000 / 60, animateWaterCreatures, 0);
 }
@@ -230,14 +257,14 @@ void timer(int value)
 	std::string s = oss.str();
 	glutSetWindow(WindowHandle);
 	glutSetWindowTitle(s.c_str());
-    FrameCount = 0;
-    glutTimerFunc(1000, timer, 0);
+	FrameCount = 0;
+	glutTimerFunc(1000, timer, 0);
 }
 
 void refresh(int value)
 {
 	updateBoat(direction);
-	glutPostRedisplay(); 
+	glutPostRedisplay();
 	glutTimerFunc(1000 / 60, refresh, 0);
 }
 
@@ -250,7 +277,7 @@ void changeSize(int w, int h) {
 
 	float ratio;
 	// Prevent a divide by zero, when window is too short
-	if(h == 0)
+	if (h == 0)
 		h = 1;
 	// set the viewport to be the entire window
 	glViewport(0, 0, w, h);
@@ -277,7 +304,7 @@ void renderBoat(void) {
 	//render the boat
 	GLint loc;
 	pushMatrix(MODEL);
-	{	
+	{
 		//translate the boat to the position
 		translate(MODEL, myBoat.position[0], myBoat.position[1], myBoat.position[2]);
 		rotate(MODEL, myBoat.angle, 0.0f, 1.0f, 0.0f);
@@ -304,7 +331,7 @@ void renderBoat(void) {
 
 		//render the pawn mesh attached to the cube
 		pushMatrix(MODEL);
-		{	
+		{
 			translate(MODEL, 0.5f, 1.0f, 0.5f); //translate to the top of the parent mesh
 			scale(MODEL, 0.3f, 0.3f, 0.3f); //scale the pawn
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
@@ -341,7 +368,7 @@ void renderBoat(void) {
 					rotate(MODEL, paddleangle[i], 0.075f * direction, 0.2f * direction, 0.0f);
 				}
 				else { // paddle da esquerda em relação à posição inicial da camara
-					translate(MODEL, 0.5f, 0.35f, 1.25f); 
+					translate(MODEL, 0.5f, 0.35f, 1.25f);
 					rotate(MODEL, 300.0f, 1.0f, 0.0f, 0.0f);
 					rotate(MODEL, 270.0f, 0.0f, 1.0f, 0.0f);
 					rotate(MODEL, paddleangle[i], -0.075f * direction, -0.2f * direction, 0.0f);
@@ -350,7 +377,7 @@ void renderBoat(void) {
 					//paddlemoving[i] = false;
 					paddleangle[i] = 0.0f;
 				}
-				
+
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 				glUniform4fv(loc, 1, boatMeshes[2 + i].mat.ambient);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -374,7 +401,7 @@ void renderBoat(void) {
 
 				//render the paddle ends
 				pushMatrix(MODEL);
-				{	
+				{
 					scale(MODEL, 1.0f, 1.0f, 0.25f);
 					translate(MODEL, -0.5, -1.65f, -0.5f);// aqui não é preciso fazer translações diferentes para cada paddle end porque a matriz MODEL já está no sistema de coordenadas do paddle stick
 					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
@@ -439,9 +466,9 @@ void renderRedCylinders(void) {
 	for (uint16_t i = 1; i < 7; i++) {
 		pushMatrix(MODEL);
 		{	
-			translate(MODEL, waterCreaturesPositions[i - 1][0], waterCreaturesPositions[i - 1][1]-0.4f, waterCreaturesPositions[i - 1][2]);
+			translate(MODEL, waterCreaturesPositions[i - 1][0], waterCreaturesPositions[i - 1][1] - 0.4f, waterCreaturesPositions[i - 1][2]);
 			rotate(MODEL, 90.0f, 1.0f, 0.0f, 0.0f);
-			rotate(MODEL, waterCreaturesAngles[i-1], 0.0f, 0.0f, 1.0f);
+			rotate(MODEL, waterCreaturesRotationAngles[i - 1], 0.0f, 0.0f, 1.0f);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 			glUniform4fv(loc, 1, myMeshes[i].mat.ambient);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -521,7 +548,7 @@ void renderFloats() {
 		}
 		popMatrix(MODEL);
 	}
-	
+
 }
 
 void renderIslandsAndTrees() {
@@ -633,7 +660,7 @@ void renderScene(void) {
 	}
 	// set the camera using a function similar to gluLookAt
 	lookAt(cams[activeCamera].camPos[0], cams[activeCamera].camPos[1], cams[activeCamera].camPos[2], cams[activeCamera].camTarget[0], cams[activeCamera].camTarget[1], cams[activeCamera].camTarget[2], 0, 1, 0);
-	
+
 	float ratio = (float)(m_viewport[2] - m_viewport[0]) / (float)(m_viewport[3] - m_viewport[1]);
 	loadIdentity(PROJECTION);
 	if (cams[activeCamera].type == 0) {
@@ -646,21 +673,21 @@ void renderScene(void) {
 	}
 
 	// use our shader
-	
+
 	glUseProgram(shader.getProgramIndex());
 
-		//send the light position in eye coordinates
-		//glUniform4fv(lPos_uniformId, 1, lightPos); //efeito capacete do mineiro, ou seja lighPos foi definido em eye coord 
+	//send the light position in eye coordinates
+	//glUniform4fv(lPos_uniformId, 1, lightPos); //efeito capacete do mineiro, ou seja lighPos foi definido em eye coord 
 
 	float res[4];
-	
+
 	//multMatrixPoint(VIEW, lightPos, res);   //lightPos definido em World Coord so is converted to eye space
 	//glUniform4fv(lPos_uniformId, 1, res);
 
 	glUniform1i(directOnOff_loc, dayTime); //send boolean variables to shader
 	glUniform1i(pointOnOff_loc, pointLightsOn);
 	glUniform1i(spotOnOff_loc, spotLightsOn);
-	
+
 	if (dayTime) {
 		multMatrixPoint(VIEW, DirectlightPos, res);
 		glUniform4fv(direc_loc, 1, res);
@@ -679,9 +706,9 @@ void renderScene(void) {
 		multMatrixPoint(VIEW, pointLights[5], res);
 		glUniform4fv(point_loc5, 1, res);
 	}
-	
 
-		
+
+
 
 	renderPlain();
 	renderBoat();
@@ -691,7 +718,7 @@ void renderScene(void) {
 	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
 	glDisable(GL_DEPTH_TEST);
 	//the glyph contains transparent background colors and non-transparent for the actual character pixels. So we use the blending
-	glEnable(GL_BLEND);  
+	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
@@ -727,9 +754,9 @@ void processKeys(unsigned char key, int xx, int yy)
 		glutLeaveMainLoop();
 		break;
 
-	/*case 'c':
-		printf("Camera Spherical Coordinates (%f, %f, %f)\n", alpha, beta, r);
-		break;*/
+		/*case 'c':
+			printf("Camera Spherical Coordinates (%f, %f, %f)\n", alpha, beta, r);
+			break;*/
 	case 'm': glEnable(GL_MULTISAMPLE); break;
 	case '1':
 		activeCamera = 0;
@@ -792,7 +819,7 @@ void processKeysUp(unsigned char key, int xx, int yy)
 void processMouseButtons(int button, int state, int xx, int yy)
 {
 	// start tracking the mouse
-	if (state == GLUT_DOWN)  {
+	if (state == GLUT_DOWN) {
 		startX = xx;
 		startY = yy;
 		if (button == GLUT_LEFT_BUTTON)
@@ -825,8 +852,8 @@ void processMouseMotion(int xx, int yy)
 	float alphaAux, betaAux;
 	float rAux;
 
-	deltaX =  - xx + startX;
-	deltaY =    yy - startY;
+	deltaX = -xx + startX;
+	deltaY = yy - startY;
 
 	// left mouse button: move camera
 	if (tracking == 1) {
@@ -851,14 +878,14 @@ void processMouseMotion(int xx, int yy)
 			rAux = 0.1f;
 	}
 	if (activeCamera == 0) {
-		cams[0].camPos[0] =  rAux * sin(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
-		cams[0].camPos[2] =  rAux * cos(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
-		cams[0].camPos[1] =  rAux * sin(betaAux * 3.14f / 180.0f);
+		cams[0].camPos[0] = rAux * sin(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
+		cams[0].camPos[2] = rAux * cos(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
+		cams[0].camPos[1] = rAux * sin(betaAux * 3.14f / 180.0f);
 	}
-	
 
-//  uncomment this if not using an idle or refresh func
-//	glutPostRedisplay();
+
+	//  uncomment this if not using an idle or refresh func
+	//	glutPostRedisplay();
 }
 
 
@@ -872,10 +899,10 @@ void mouseWheel(int wheel, int direction, int x, int y) {
 		cams[activeCamera].camPos[2] = r * cos(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
 		cams[activeCamera].camPos[1] = r * sin(beta * 3.14f / 180.0f);
 	}
-	
 
-//  uncomment this if not using an idle or refresh func
-//	glutPostRedisplay();
+
+	//  uncomment this if not using an idle or refresh func
+	//	glutPostRedisplay();
 }
 
 // --------------------------------------------------------
@@ -894,7 +921,7 @@ GLuint setupShaders() {
 	//shader.loadShader(VSShaderLib::FRAGMENT_SHADER, "shaders/pointlight_Gouraud.frag");
 
 	// set semantics for the shader variables
-	glBindFragDataLocation(shader.getProgramIndex(), 0,"colorOut");
+	glBindFragDataLocation(shader.getProgramIndex(), 0, "colorOut");
 	glBindAttribLocation(shader.getProgramIndex(), VERTEX_COORD_ATTRIB, "position");
 	glBindAttribLocation(shader.getProgramIndex(), NORMAL_ATTRIB, "normal");
 	//glBindAttribLocation(shader.getProgramIndex(), TEXTURE_COORD_ATTRIB, "texCoord");
@@ -931,7 +958,7 @@ GLuint setupShaders() {
 	directOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "dayTime");
 	pointOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "pointLightsOn");
 	spotOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLightsOn");
-	
+
 
 	// Shader for bitmap Text
 	shaderText.init();
@@ -945,7 +972,7 @@ GLuint setupShaders() {
 		printf("GLSL Text Program Not Valid!\n");
 		exit(1);
 	}
-	
+
 	return(shader.isProgramLinked() && shaderText.isProgramLinked());
 }
 
@@ -980,17 +1007,27 @@ void init()
 	// set the camera position based on its spherical coordinates
 	cams[activeCamera].camPos[0] = r * sin(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
 	cams[activeCamera].camPos[2] = r * cos(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
-	cams[activeCamera].camPos[1] = r *   						     sin(beta * 3.14f / 180.0f);
-
-	
+	cams[activeCamera].camPos[1] = r * sin(beta * 3.14f / 180.0f);
 
 
-	
-	float amb[]= {0.2f, 0.15f, 0.1f, 1.0f};
-	float diff[] = {0.8f, 0.6f, 0.4f, 1.0f};
-	float spec[] = {0.8f, 0.8f, 0.8f, 1.0f};
-	float emissive[] = {0.0f, 0.0f, 0.0f, 1.0f};
-	float shininess= 100.0f;
+	for (uint16_t i = 0; i < 6; i++) {
+		float random = 0.3 + ((float)rand() / RAND_MAX) * (0.7 - 0.5);
+		waterCreaturesSpeeds[i] = random / 4;
+		random = 1 + ((float)rand() / RAND_MAX) * (360 - 1);
+		waterCreaturesRotationAngles[i] = random;
+		for (uint16_t j = 0; j < 2; j++) {
+			if (j == 1) { continue; }
+			random = (rand() % 101) - 50;
+			waterCreaturesPositions[i][j] = float(random);
+		}
+	}
+
+
+	float amb[] = { 0.2f, 0.15f, 0.1f, 1.0f };
+	float diff[] = { 0.8f, 0.6f, 0.4f, 1.0f };
+	float spec[] = { 0.8f, 0.8f, 0.8f, 1.0f };
+	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	float shininess = 100.0f;
 	int texcount = 0;
 
 	float amb2[] = { 0.0f, 0.0f, 0.3f, 1.0f }; //cor ambiente do plano
@@ -1017,7 +1054,7 @@ void init()
 	amesh.mat.texCount = texcount;
 	myMeshes.push_back(amesh);*/
 
-	
+
 	// create geometry and VAO of the sphere
 	/*amesh = createSphere(1.0f, 20);
 	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
@@ -1030,13 +1067,13 @@ void init()
 
 	float amb1[] = { 0.3f, 0.0f, 0.0f, 1.0f }; //cor ambiente do cilindro
 	float diff1[] = { 0.8f, 0.1f, 0.1f, 1.0f }; //cor difusa do cilindro ou cor do material 
-	float spec1[] = {0.9f, 0.9f, 0.9f, 1.0f};
+	float spec1[] = { 0.9f, 0.9f, 0.9f, 1.0f };
 
 	float amb3[] = { 0.0f, 0.3f, 0.0, 1.0f }; //green
 	float diff3[] = { 0.1f, 0.8f, 0.1f, 1.0f };
 	float spec3[] = { 0.9f, 0.9f, 0.9f, 1.0f };
 
-	shininess=500.0;
+	shininess = 500.0;
 
 	//create geometry and VAO of the cube
 	amesh = createCube();
@@ -1082,7 +1119,7 @@ void init()
 		amesh.mat.texCount = texcount;
 		boatMeshes.push_back(amesh);
 	}
-	
+
 
 	// create geometry and VAO of 6 cylinders that will be in the water
 	for (uint16_t i = 0; i < 6; i++) {
@@ -1162,22 +1199,23 @@ void init()
 //
 
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
 
-//  GLUT initialization
+
+	//  GLUT initialization
 	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DEPTH|GLUT_DOUBLE|GLUT_RGBA|GLUT_MULTISAMPLE);
+	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA | GLUT_MULTISAMPLE);
 
-	glutInitContextVersion (4, 3);
-	glutInitContextProfile (GLUT_CORE_PROFILE );
+	glutInitContextVersion(4, 3);
+	glutInitContextProfile(GLUT_CORE_PROFILE);
 	glutInitContextFlags(GLUT_FORWARD_COMPATIBLE | GLUT_DEBUG);
 
-	glutInitWindowPosition(100,100);
+	glutInitWindowPosition(100, 100);
 	glutInitWindowSize(WinX, WinY);
 	WindowHandle = glutCreateWindow(CAPTION);
 
 
-//  Callback Registration
+	//  Callback Registration
 	glutDisplayFunc(renderScene);
 	glutReshapeFunc(changeSize);
 
@@ -1185,27 +1223,29 @@ int main(int argc, char **argv) {
 	//glutIdleFunc(renderScene);  // Use it for maximum performance
 	glutTimerFunc(0, refresh, 0);    //use it to to get 60 FPS whatever
 	//glutTimerFunc(0, updateBoat, direction);
+	glutTimerFunc(0, accelerateCreatures, 0);
+	glutTimerFunc(0, changeCreaturesAngle, 0);
 	glutTimerFunc(0, animateWaterCreatures, 0);
 
-//	Mouse and Keyboard Callbacks
+	//	Mouse and Keyboard Callbacks
 	glutKeyboardFunc(processKeys);
 	glutKeyboardUpFunc(processKeysUp);
 	glutMouseFunc(processMouseButtons);
 	glutMotionFunc(processMouseMotion);
-	glutMouseWheelFunc ( mouseWheel ) ;
-	
+	glutMouseWheelFunc(mouseWheel);
 
-//	return from main loop
+
+	//	return from main loop
 	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
 
-//	Init GLEW
+	//	Init GLEW
 	glewExperimental = GL_TRUE;
 	glewInit();
 
-	printf ("Vendor: %s\n", glGetString (GL_VENDOR));
-	printf ("Renderer: %s\n", glGetString (GL_RENDERER));
-	printf ("Version: %s\n", glGetString (GL_VERSION));
-	printf ("GLSL: %s\n", glGetString (GL_SHADING_LANGUAGE_VERSION));
+	printf("Vendor: %s\n", glGetString(GL_VENDOR));
+	printf("Renderer: %s\n", glGetString(GL_RENDERER));
+	printf("Version: %s\n", glGetString(GL_VERSION));
+	printf("GLSL: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
 	if (!setupShaders())
 		return(1);
@@ -1217,6 +1257,3 @@ int main(int argc, char **argv) {
 
 	return(0);
 }
-
-
-
