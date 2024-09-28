@@ -57,6 +57,7 @@ vector<struct MyMesh> floatCylinders;
 vector<struct MyMesh> islands;
 vector<struct MyMesh> islandTrees;
 vector<struct MyMesh> islandLeaves;
+vector<struct MyMesh> auxMeshes;
 
 //External array storage defined in AVTmathLib.cpp
 
@@ -95,6 +96,10 @@ public: float direction[3] = { 1.0f, 0.0f, 0.0f }; //vetor diretor da direção 
 public: float position[3] = { 25.0f, 0.0f, 0.0f };
 public: float angle = 0.0f;
 public: float angularSpeed = 0.0f;
+//public: float center[3] = { 0.0f, 0.5f, 0.0f }; //como o barco não roda sobre o seu centro é dificil uma esfera envolvente que o envolva completamente, o mais facil é criar uma com raio igual à diagonal do barco ara cobrir o barco e a sua rotação
+//public: float radius = 0.75f;
+public: float center[3]= {25.0f, 0.5f, 0.0f}; 
+public: float radius = std::sqrt(2);
 };
 
 //boat
@@ -116,6 +121,8 @@ float floatPositions[6][3] = {
 
 };
 
+float floatRadius = 0.5f; 
+
 float waterCreaturesPositions[6][3] = {
 	{10.0f, 0.0f, 10.0f},
 	{-14.0f, 0.0f, -12.0f},
@@ -132,12 +139,16 @@ float waterCreaturesAngles[6];
 
 float waterCreaturesSpeeds[6];
 
+float waterCreaturesRadius = 0.875f; //metade da altura estipulada para os cilindros que estão a ser usados para representar as piranhas
+
 float islandPositions[4][3] = {
 	{27.0f, 0.0f, -33.0f},
 	{-41.0f, 0.0f, 23.0f},
 	{36.0f, 0.0f, 9.0f},
 	{-20.0f, 0.0f, -40.0f}
 };
+
+float islandRadius = 5.0f;
 
 //cameras
 
@@ -169,6 +180,40 @@ float paddleangle[2] = { 0.0f, 0.0f };
 bool paddlemoving[2] = { false, false };
 int paddlesMoving = 0;
 
+//void createBoundingSphere() {
+//	myBoat.center[0] = myBoat.position[0] - (0.5f * myBoat.direction[0]);
+//	myBoat.center[1] = myBoat.position[1] + (0.5f); //não é preciso direção porque a altura do barco é constante
+//	myBoat.center[2] = myBoat.position[2] + (0.5f * myBoat.direction[2]);
+//
+//	//myBoat.radius = std::sqrt(3 * std::pow(0.5f, 2));
+//}
+
+float distanceFromBoatToObject(float objectPosition[3], float nextBoatCenter[3]) {
+	float distance = std::sqrt(std::pow((objectPosition[0] - nextBoatCenter[0]), 2)
+		+ std::pow((objectPosition[1] - nextBoatCenter[1]), 2)
+		+ std::pow((objectPosition[2] - nextBoatCenter[2]), 2));
+
+	return distance;
+}
+
+int checkCollision(float nextBoatCenter[3]) {
+	for (uint16_t i = 0; i < 6; i++) {
+		if (distanceFromBoatToObject(floatPositions[i], nextBoatCenter) < myBoat.radius + floatRadius) {
+			return 1; //code for collision with float
+		}
+		if (distanceFromBoatToObject(waterCreaturesPositions[i], nextBoatCenter) < myBoat.radius + waterCreaturesRadius) {
+			return -1; //code for collision with water creature, code for failure
+		}
+	}
+	for (uint16_t i = 0; i < 4; i++) {
+		if (distanceFromBoatToObject(islandPositions[i], nextBoatCenter) < myBoat.radius + islandRadius) {
+			return 2; //code for collision with island
+		}
+	}
+	return 0; //no collision
+}
+
+
 void updateBoat(int direction) {
 
 	for (uint16_t i = 0; i < 2; i++) {
@@ -191,9 +236,35 @@ void updateBoat(int direction) {
 		myBoat.direction[0] = cos(radians);
 		myBoat.direction[2] = sin(radians);
 	}
-	myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction; //subtração porque assim a combinação do cosseno e seno dá a direção correta
-	myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
-	myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
+	float nextBoatCenter[3] = { myBoat.center[0] - (myBoat.speed * myBoat.direction[0] * deltaT) * direction, 
+		myBoat.center[1], 
+		myBoat.center[2] + (myBoat.speed * myBoat.direction[2] * deltaT) * direction };
+
+	int collision = checkCollision(nextBoatCenter);
+	if (collision == 0) { //if no colision move the boat and its center
+		myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction; //subtração porque assim a combinação do cosseno e seno dá a direção correta
+		myBoat.center[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction;
+		//myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
+		//myBoat.center[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
+		myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
+		myBoat.center[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
+	}
+	else if (collision == -1) { //colision with piranha, failure, reset boat
+		myBoat.speed = 0.0f;
+		myBoat.angularSpeed = 0.0f;
+		myBoat.position[0] = 25.0f;
+		myBoat.position[1] = 0.0f;
+		myBoat.position[2] = 0.0f;	
+		myBoat.angle = 0.0f;
+		myBoat.direction[0] = 1.0f;
+		myBoat.direction[1] = 0.0f;
+		myBoat.direction[2] = 0.0f;
+		myBoat.center[0] = 25.0f;
+		myBoat.center[1] = 0.5f;
+		myBoat.center[2] = 0.0f;
+		//exit(0);
+	}//if the colision code is not 0 or -1, its a collsion that makes the position update not happen
+	
 	myBoat.speed -= speedDecay;
 	if (myBoat.speed < 0.0f) {
 		myBoat.speed = 0.0f;
@@ -210,6 +281,8 @@ void updateBoat(int direction) {
 			paddleangle[i] += 3.0f;
 		}
 	}
+
+	//createBoundingSphere(); //atualizar a bounding sphere do barco
 
 	glutPostRedisplay();
 }
@@ -637,6 +710,35 @@ void renderIslandsAndTrees() {
 
 }
 
+void renderBoundingSphere() {
+	GLint loc;
+	pushMatrix(MODEL);
+	{
+		translate(MODEL, myBoat.center[0], myBoat.center[1], myBoat.center[2]);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+		glUniform4fv(loc, 1, auxMeshes[0].mat.ambient);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+		glUniform4fv(loc, 1, auxMeshes[0].mat.diffuse);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+		glUniform4fv(loc, 1, auxMeshes[0].mat.specular);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+		glUniform1f(loc, auxMeshes[0].mat.shininess);
+
+		//compute and send the matrices to the shader
+		computeDerivedMatrix(PROJ_VIEW_MODEL);
+		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+		computeNormalMatrix3x3();
+		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+		//render the parent mesh
+		glBindVertexArray(auxMeshes[0].vao);
+		glDrawElements(auxMeshes[0].type, auxMeshes[0].numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+	}
+	popMatrix(MODEL);
+}
+
 void renderScene(void) {
 
 	GLint loc;
@@ -715,6 +817,7 @@ void renderScene(void) {
 	renderRedCylinders();
 	renderFloats();
 	renderIslandsAndTrees();
+	//renderBoundingSphere();
 	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
 	glDisable(GL_DEPTH_TEST);
 	//the glyph contains transparent background colors and non-transparent for the actual character pixels. So we use the blending
@@ -1183,6 +1286,16 @@ void init()
 		islandLeaves.push_back(amesh);
 
 	}
+
+	//create the aux sphere to show the bounding sphere, comment to not create it
+	amesh = createSphere(myBoat.radius, 20);
+	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
+	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
+	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
+	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+	amesh.mat.shininess = shininess;
+	amesh.mat.texCount = texcount;
+	auxMeshes.push_back(amesh);
 
 
 	// some GL settings
