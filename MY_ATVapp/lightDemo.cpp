@@ -57,6 +57,8 @@ vector<struct MyMesh> floatCylinders;
 vector<struct MyMesh> islands;
 vector<struct MyMesh> islandTrees;
 vector<struct MyMesh> islandLeaves;
+vector<struct MyMesh> islandHouseBodies;
+vector<struct MyMesh> islandHouseRoofs;
 vector<struct MyMesh> auxMeshes;
 
 //External array storage defined in AVTmathLib.cpp
@@ -96,9 +98,9 @@ public: float direction[3] = { 1.0f, 0.0f, 0.0f }; //vetor diretor da direção 
 public: float position[3] = { 25.0f, 0.0f, 0.0f };
 public: float angle = 0.0f;
 public: float angularSpeed = 0.0f;
-//public: float center[3] = { 0.0f, 0.5f, 0.0f }; //como o barco não roda sobre o seu centro é dificil uma esfera envolvente que o envolva completamente, o mais facil é criar uma com raio igual à diagonal do barco ara cobrir o barco e a sua rotação
-//public: float radius = 0.75f;
-public: float center[3]= {25.0f, 0.5f, 0.0f}; 
+	  //public: float center[3] = { 0.0f, 0.5f, 0.0f }; //como o barco não roda sobre o seu centro é dificil uma esfera envolvente que o envolva completamente, o mais facil é criar uma com raio igual à diagonal do barco ara cobrir o barco e a sua rotação
+	  //public: float radius = 0.75f;
+public: float center[3] = { 25.0f, 0.5f, 0.0f };
 public: float radius = std::sqrt(2);
 };
 
@@ -121,7 +123,7 @@ float floatPositions[6][3] = {
 
 };
 
-float floatRadius = 0.5f; 
+float floatRadius = 0.5f;
 
 float waterCreaturesPositions[6][3] = {
 	{10.0f, 0.0f, 10.0f},
@@ -142,10 +144,10 @@ float waterCreaturesSpeeds[6];
 float waterCreaturesRadius = 0.875f; //metade da altura estipulada para os cilindros que estão a ser usados para representar as piranhas
 
 float islandPositions[4][3] = {
-	{27.0f, 0.0f, -33.0f},
-	{-41.0f, 0.0f, 23.0f},
-	{36.0f, 0.0f, 9.0f},
-	{-20.0f, 0.0f, -40.0f}
+	{27.0f, -17.0f, -33.0f},
+	{-34.0f, -17.0f, 30.0f},
+	{20.0f, -17.0f, 20.0f},
+	{-10.0f, -17.0f, -25.0f}
 };
 
 float islandRadius = 5.0f;
@@ -236,8 +238,8 @@ void updateBoat(int direction) {
 		myBoat.direction[0] = cos(radians);
 		myBoat.direction[2] = sin(radians);
 	}
-	float nextBoatCenter[3] = { myBoat.center[0] - (myBoat.speed * myBoat.direction[0] * deltaT) * direction, 
-		myBoat.center[1], 
+	float nextBoatCenter[3] = { myBoat.center[0] - (myBoat.speed * myBoat.direction[0] * deltaT) * direction,
+		myBoat.center[1],
 		myBoat.center[2] + (myBoat.speed * myBoat.direction[2] * deltaT) * direction };
 
 	int collision = checkCollision(nextBoatCenter);
@@ -254,7 +256,7 @@ void updateBoat(int direction) {
 		myBoat.angularSpeed = 0.0f;
 		myBoat.position[0] = 25.0f;
 		myBoat.position[1] = 0.0f;
-		myBoat.position[2] = 0.0f;	
+		myBoat.position[2] = 0.0f;
 		myBoat.angle = 0.0f;
 		myBoat.direction[0] = 1.0f;
 		myBoat.direction[1] = 0.0f;
@@ -264,7 +266,7 @@ void updateBoat(int direction) {
 		myBoat.center[2] = 0.0f;
 		//exit(0);
 	}//if the colision code is not 0 or -1, its a collsion that makes the position update not happen
-	
+
 	myBoat.speed -= speedDecay;
 	if (myBoat.speed < 0.0f) {
 		myBoat.speed = 0.0f;
@@ -538,7 +540,7 @@ void renderRedCylinders(void) {
 	GLint loc;
 	for (uint16_t i = 1; i < 7; i++) {
 		pushMatrix(MODEL);
-		{	
+		{
 			translate(MODEL, waterCreaturesPositions[i - 1][0], waterCreaturesPositions[i - 1][1] - 0.4f, waterCreaturesPositions[i - 1][2]);
 			rotate(MODEL, 90.0f, 1.0f, 0.0f, 0.0f);
 			rotate(MODEL, waterCreaturesRotationAngles[i - 1], 0.0f, 0.0f, 1.0f);
@@ -653,7 +655,7 @@ void renderIslandsAndTrees() {
 
 			pushMatrix(MODEL);
 			{
-				translate(MODEL, 0.0f, 5.0f, 0.0f);
+				translate(MODEL, 0.0f, 20.0f, 0.0f);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 				glUniform4fv(loc, 1, islandTrees[i].mat.ambient);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -700,6 +702,62 @@ void renderIslandsAndTrees() {
 					glBindVertexArray(0);
 				}
 				popMatrix(MODEL);
+				// Render two houses on each island
+				for (uint16_t j = 0; j < 2; j++) {
+					pushMatrix(MODEL);
+					{
+						scale(MODEL, 2.5, 2.5, 2.5);
+						// Position the house bodies
+						if (j == 0) {
+							translate(MODEL, 1.5f, -0.8f, 1.5f);  // Position for the first house
+						}
+						else {
+							translate(MODEL, -2.5f, -0.8f, -2.5f); // Position for the second house
+						}
+
+						// Render house body
+						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+						glUniform4fv(loc, 1, islandHouseBodies[i].mat.ambient);
+						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+						glUniform4fv(loc, 1, islandHouseBodies[i].mat.diffuse);
+						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+						glUniform4fv(loc, 1, islandHouseBodies[i].mat.specular);
+						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+						glUniform1f(loc, islandHouseBodies[i].mat.shininess);
+
+						computeDerivedMatrix(PROJ_VIEW_MODEL);
+						glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+						glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+						computeNormalMatrix3x3();
+						glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+						glBindVertexArray(islandHouseBodies[i].vao);
+						glDrawElements(islandHouseBodies[i].type, islandHouseBodies[i].numIndexes, GL_UNSIGNED_INT, 0);
+						glBindVertexArray(0);
+
+						// Render house roof
+						translate(MODEL, 0.5f, 1.0f, 0.5f); // Move up to place the roof on top
+						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+						glUniform4fv(loc, 1, islandHouseRoofs[i].mat.ambient);
+						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+						glUniform4fv(loc, 1, islandHouseRoofs[i].mat.diffuse);
+						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+						glUniform4fv(loc, 1, islandHouseRoofs[i].mat.specular);
+						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+						glUniform1f(loc, islandHouseRoofs[i].mat.shininess);
+
+						computeDerivedMatrix(PROJ_VIEW_MODEL);
+						glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+						glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+						computeNormalMatrix3x3();
+						glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+						glBindVertexArray(islandHouseRoofs[i].vao);
+						glDrawElements(islandHouseRoofs[i].type, islandHouseRoofs[i].numIndexes, GL_UNSIGNED_INT, 0);
+						glBindVertexArray(0);
+					}
+					popMatrix(MODEL);
+				}
 
 			}
 			popMatrix(MODEL);
@@ -992,6 +1050,7 @@ void processMouseMotion(int xx, int yy)
 }
 
 
+
 void mouseWheel(int wheel, int direction, int x, int y) {
 
 	r += direction * 0.1f;
@@ -1131,6 +1190,7 @@ void init()
 	float spec[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 	float emissive[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	float shininess = 100.0f;
+	float shininess2 = 128.0f;
 	int texcount = 0;
 
 	float amb2[] = { 0.0f, 0.0f, 0.3f, 1.0f }; //cor ambiente do plano
@@ -1175,6 +1235,18 @@ void init()
 	float amb3[] = { 0.0f, 0.3f, 0.0, 1.0f }; //green
 	float diff3[] = { 0.1f, 0.8f, 0.1f, 1.0f };
 	float spec3[] = { 0.9f, 0.9f, 0.9f, 1.0f };
+
+	float amb4[] = { 0.55f, 0.45f, 0.3f, 1.0f };  // Sand
+	float diff4[] = { 0.65f, 0.55f, 0.35f, 1.0f };
+	float spec4[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+
+	float amb5[] = { 0.5f, 0.5f, 0.5f, 1.0f };  // house body
+	float diff5[] = { 0.8f, 0.8f, 0.8f, 1.0f };
+	float spec5[] = { 0.9f, 0.9f, 0.9f, 1.0f };
+
+	float amb6[] = { 0.5f, 0.0f, 0.0f, 1.0f };  // house roof
+	float diff6[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+	float spec6[] = { 1.0f, 0.0f, 0.0f, 1.0f };
 
 	shininess = 500.0;
 
@@ -1258,10 +1330,10 @@ void init()
 
 	//create the islands with trees
 	for (uint16_t i = 0; i < 4; i++) {
-		amesh = createSphere(5.0f, 20);
-		memcpy(amesh.mat.ambient, amb3, 4 * sizeof(float));
-		memcpy(amesh.mat.diffuse, diff3, 4 * sizeof(float));
-		memcpy(amesh.mat.specular, spec3, 4 * sizeof(float));
+		amesh = createSphere(20.0f, 20);
+		memcpy(amesh.mat.ambient, amb4, 4 * sizeof(float));
+		memcpy(amesh.mat.diffuse, diff4, 4 * sizeof(float));
+		memcpy(amesh.mat.specular, spec4, 4 * sizeof(float));
 		memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
 		amesh.mat.shininess = shininess;
 		amesh.mat.texCount = texcount;
@@ -1286,6 +1358,29 @@ void init()
 		islandLeaves.push_back(amesh);
 
 	}
+
+	// House body (cube)
+	for (uint16_t i = 0; i < 4; i++) {
+		amesh = createCube();
+		memcpy(amesh.mat.ambient, amb5, 4 * sizeof(float));
+		memcpy(amesh.mat.diffuse, diff5, 4 * sizeof(float));
+		memcpy(amesh.mat.specular, spec5, 4 * sizeof(float));
+		memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+		amesh.mat.shininess = shininess2;
+		amesh.mat.texCount = texcount;
+		islandHouseBodies.push_back(amesh);
+
+		// House roof (octagon)
+		amesh = createCone(1.0f, 1.5f, 8);
+		memcpy(amesh.mat.ambient, amb6, 4 * sizeof(float));
+		memcpy(amesh.mat.diffuse, diff6, 4 * sizeof(float));
+		memcpy(amesh.mat.specular, spec6, 4 * sizeof(float));
+		memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+		amesh.mat.shininess = shininess2;
+		amesh.mat.texCount = texcount;
+		islandHouseRoofs.push_back(amesh);
+	}
+
 
 	//create the aux sphere to show the bounding sphere, comment to not create it
 	amesh = createSphere(myBoat.radius, 20);
