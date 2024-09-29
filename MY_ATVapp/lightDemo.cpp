@@ -104,8 +104,18 @@ public: float center[3] = { 25.0f, 0.5f, 0.0f };
 public: float radius = std::sqrt(2);
 };
 
+
+
 //boat
 boat myBoat;
+
+class spotLight {
+public: float position[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+public: float direction[4] = { myBoat.direction[0], myBoat.direction[1], myBoat.direction[2], 0.0f};
+public: float angle = 20.0f;
+};
+
+spotLight spotLights[2];
 
 float speedDecay = 0.02f;
 float angleDecay = 1.0f;
@@ -150,7 +160,7 @@ float islandPositions[4][3] = {
 	{-10.0f, -17.0f, -25.0f}
 };
 
-float islandRadius = 5.0f;
+float islandRadius = 20.0f;
 
 //cameras
 
@@ -285,6 +295,14 @@ void updateBoat(int direction) {
 	}
 
 	//createBoundingSphere(); //atualizar a bounding sphere do barco
+	for (uint16_t i = 0; i < 2; i++) {
+		spotLights[i].position[0] = myBoat.position[0];
+		spotLights[i].position[1] = myBoat.position[1] + 1.1f + i/2;
+		spotLights[i].position[2] = myBoat.position[2];
+		spotLights[i].direction[0] = myBoat.direction[0];
+		spotLights[i].direction[1] = myBoat.direction[1];
+		spotLights[i].direction[2] = -myBoat.direction[2];
+	}
 
 	glutPostRedisplay();
 }
@@ -866,6 +884,18 @@ void renderScene(void) {
 		multMatrixPoint(VIEW, pointLights[5], res);
 		glUniform4fv(point_loc5, 1, res);
 	}
+	if (spotLightsOn) {
+		multMatrixPoint(VIEW, spotLights[0].position, res);
+		glUniform4fv(spot_loc, 1, res);
+		multMatrixPoint(VIEW, spotLights[1].position, res);
+		glUniform4fv(spot_loc1, 1, res);
+		multMatrixPoint(VIEW, spotLights[0].direction, res);
+		glUniform4fv(spot_dir_loc, 1, res);
+		multMatrixPoint(VIEW, spotLights[1].direction, res);
+		glUniform4fv(spot_dir_loc1, 1, res);
+		glUniform1f(spot_angle_loc, spotLights[0].angle);
+		glUniform1f(spot_angle_loc1, spotLights[1].angle);
+	}
 
 
 
@@ -954,7 +984,12 @@ void processKeys(unsigned char key, int xx, int yy)
 	case 'c':
 		//toggle on/off the point lights
 		pointLightsOn = !pointLightsOn;
-		std::cout << "pointLightsOn: " << pointLightsOn << "\n";
+		//std::cout << "pointLightsOn: " << pointLightsOn << "\n";
+		break;
+	case 'h':
+		//toggle on/off the spot lights
+		spotLightsOn = !spotLightsOn;
+		//std::cout << "spotLightsOn: " << spotLightsOn << "\n";
 		break;
 	}
 }
@@ -1107,12 +1142,12 @@ GLuint setupShaders() {
 	point_loc3 = glGetUniformLocation(shader.getProgramIndex(), "pointLights[3].position");
 	point_loc4 = glGetUniformLocation(shader.getProgramIndex(), "pointLights[4].position");
 	point_loc5 = glGetUniformLocation(shader.getProgramIndex(), "pointLights[5].position");
-	spot_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLight[0].position");
-	spot_loc1 = glGetUniformLocation(shader.getProgramIndex(), "spotLight[1].position");
-	spot_angle_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLight[0].angle");
-	spot_angle_loc1 = glGetUniformLocation(shader.getProgramIndex(), "spotLight[1].angle");
-	spot_dir_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLight[0].direction");
-	spot_dir_loc1 = glGetUniformLocation(shader.getProgramIndex(), "spotLight[1].direction");
+	spot_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLights[0].position");
+	spot_loc1 = glGetUniformLocation(shader.getProgramIndex(), "spotLights[1].position");
+	spot_angle_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLights[0].angle");
+	spot_angle_loc1 = glGetUniformLocation(shader.getProgramIndex(), "spotLights[1].angle");
+	spot_dir_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLights[0].direction");
+	spot_dir_loc1 = glGetUniformLocation(shader.getProgramIndex(), "spotLights[1].direction");
 	direc_loc = glGetUniformLocation(shader.getProgramIndex(), "dirLight.direction");
 	tex_loc = glGetUniformLocation(shader.getProgramIndex(), "texmap0");
 	tex_loc1 = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
@@ -1236,16 +1271,16 @@ void init()
 	float diff3[] = { 0.1f, 0.8f, 0.1f, 1.0f };
 	float spec3[] = { 0.9f, 0.9f, 0.9f, 1.0f };
 
-	float amb4[] = { 0.55f, 0.45f, 0.3f, 1.0f };  // Sand
+	float amb4[] = { 0.4f, 0.35f, 0.3f, 1.0f };  // Sand
 	float diff4[] = { 0.65f, 0.55f, 0.35f, 1.0f };
-	float spec4[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+	float spec4[] = { 0.9f, 0.9f, 0.9f, 1.0f };
 
-	float amb5[] = { 0.5f, 0.5f, 0.5f, 1.0f };  // house body
+	float amb5[] = { 0.3f, 0.3f, 0.3f, 1.0f };  // house body
 	float diff5[] = { 0.8f, 0.8f, 0.8f, 1.0f };
 	float spec5[] = { 0.9f, 0.9f, 0.9f, 1.0f };
 
-	float amb6[] = { 0.5f, 0.0f, 0.0f, 1.0f };  // house roof
-	float diff6[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+	float amb6[] = { 0.3f, 0.0f, 0.0f, 1.0f };  // house roof
+	float diff6[] = { 0.8f, 0.0f, 0.0f, 1.0f };
 	float spec6[] = { 1.0f, 0.0f, 0.0f, 1.0f };
 
 	shininess = 500.0;

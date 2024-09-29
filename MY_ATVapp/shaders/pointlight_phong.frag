@@ -26,7 +26,7 @@ struct DirectionalLight {
 struct SpotLight {
 	vec4 position;
 	float angle;
-	vec3 direction;
+	vec4 direction;
 };
 
 uniform Materials mat;
@@ -44,18 +44,6 @@ in Data {
 	vec3 lightDir;
 } DataIn;
 
-vec4 calculatePointLights(PointLight light, vec3 normal, vec3 viewDir) {
-	vec3 lightDir = normalize(vec3(light.position) + DataIn.eye);
-    float diff = max(dot(normal, lightDir), 0.0);
-    
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), mat.shininess);
-    
-    vec4 diffuse = diff * mat.diffuse;
-    vec4 specular = spec * mat.specular;
-    
-    return (diffuse + specular);
-}
 
 void main() {
 
@@ -76,16 +64,39 @@ void main() {
 			spec = mat.specular * pow(intSpec, mat.shininess);
 		}
 	
-		color += max(intensity * mat.diffuse + spec, mat.ambient);
+		color += intensity * mat.diffuse + spec;
 	}
 
 	//point lights
 	if (pointLightsOn){
 		for (int i = 0; i < 6; i++) {
-		color+= calculatePointLights(pointLights[i], n, e);
+			l = normalize(vec3(pointLights[i].position) + DataIn.eye);
+			float intensity = max(dot(n,l), 0.0);
+			if (intensity > 0.0) {
+				vec3 h = normalize(l + e);
+				float intSpec = max(dot(h,n), 0.0);
+				spec = mat.specular * pow(intSpec, mat.shininess);
+			}
+			color += intensity * mat.diffuse + spec;
+		}
+	}
+
+	if (spotLightsOn){
+		for (int i=0; i<2; i++){
+			l = normalize(vec3(spotLights[i].position) + DataIn.eye);
+			float theta = dot(l, normalize(vec3(spotLights[i].direction)));
+			if (theta > cos(radians(spotLights[i].angle))){
+				float intensity = max(dot(n,l), 0.0);
+				if (intensity > 0.0) {
+					vec3 h = normalize(l + e);
+					float intSpec = max(dot(h,n), 0.0);
+					spec = mat.specular * pow(intSpec, mat.shininess);
+				}
+				color += intensity * mat.diffuse + spec;
+			}
 		}
 	}
 	
 
-	colorOut = color;
+	colorOut = max(color, mat.ambient);
 }
