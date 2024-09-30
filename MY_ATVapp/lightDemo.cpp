@@ -200,6 +200,20 @@ int paddlesMoving = 0;
 //	//myBoat.radius = std::sqrt(3 * std::pow(0.5f, 2));
 //}
 
+void resetWaterCreatures() { //reset the water creatures positions and speeds after colision with one of them
+	for (uint16_t i = 0; i < 6; i++) {
+		float random = 0.3 + ((float)rand() / RAND_MAX) * (0.7 - 0.5);
+		waterCreaturesSpeeds[i] = random / 4;
+		random = 1 + ((float)rand() / RAND_MAX) * (360 - 1);
+		waterCreaturesRotationAngles[i] = random;
+		for (uint16_t j = 0; j < 2; j++) {
+			if (j == 1) { continue; }
+			random = (rand() % 101) - 50;
+			waterCreaturesPositions[i][j] = float(random);
+		}
+	}
+}
+
 float distanceFromBoatToObject(float objectPosition[3], float nextBoatCenter[3]) {
 	float distance = std::sqrt(std::pow((objectPosition[0] - nextBoatCenter[0]), 2)
 		+ std::pow((objectPosition[1] - nextBoatCenter[1]), 2)
@@ -221,6 +235,10 @@ int checkCollision(float nextBoatCenter[3]) {
 		if (distanceFromBoatToObject(islandPositions[i], nextBoatCenter) < myBoat.radius + islandRadius) {
 			return 2; //code for collision with island
 		}
+	}
+	if (nextBoatCenter[0] > 48.5f || nextBoatCenter[0] < -48.5f || nextBoatCenter[2]> 48.5f || nextBoatCenter[2]<-48.5f) {
+		return 1; //out of bounds 
+
 	}
 	return 0; //no collision
 }
@@ -253,7 +271,7 @@ void updateBoat(int direction) {
 		myBoat.center[2] + (myBoat.speed * myBoat.direction[2] * deltaT) * direction };
 
 	int collision = checkCollision(nextBoatCenter);
-	if (collision == 0) { //if no colision move the boat and its center
+	if (collision == 0) { //if no colision and boat is in bounds move the boat and its center
 		myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction; //subtração porque assim a combinação do cosseno e seno dá a direção correta
 		myBoat.center[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction;
 		//myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
@@ -274,6 +292,7 @@ void updateBoat(int direction) {
 		myBoat.center[0] = 25.0f;
 		myBoat.center[1] = 0.5f;
 		myBoat.center[2] = 0.0f;
+		resetWaterCreatures();
 		//exit(0);
 	}//if the colision code is not 0 or -1, its a collsion that makes the position update not happen
 
@@ -324,6 +343,11 @@ void changeCreaturesAngle(int value) {
 	glutTimerFunc(5000, changeCreaturesAngle, 0);
 }
 
+void resetWaterCreatureSpeedAfterRespawning(int index) {
+	float random = 0.3 + ((float)rand() / RAND_MAX) * (0.7 - 0.5);
+	waterCreaturesSpeeds[index] = random / 4;
+}
+
 void animateWaterCreatures(int value) {
 	for (uint16_t i = 0; i < 6; i++) {
 		waterCreaturesRotationAngles[i] += 2.0f;
@@ -334,6 +358,7 @@ void animateWaterCreatures(int value) {
 		if (waterCreaturesPositions[i][0] + (waterCreaturesSpeeds[i] * cos(radians) * deltaT) > 50 || waterCreaturesPositions[i][2] + (waterCreaturesSpeeds[i] * cos(radians) * deltaT) > 50 || waterCreaturesPositions[i][0] + (waterCreaturesSpeeds[i] * cos(radians) * deltaT) < -50 || waterCreaturesPositions[i][2] + (waterCreaturesSpeeds[i] * cos(radians) * deltaT) < -50) {
 			waterCreaturesPositions[i][0] = (rand() % 101) - 50;
 			waterCreaturesPositions[i][2] = (rand() % 101) - 50;
+			resetWaterCreatureSpeedAfterRespawning(i);
 		}
 		waterCreaturesPositions[i][0] += (waterCreaturesSpeeds[i] * cos(radians) * deltaT);
 		waterCreaturesPositions[i][2] += (waterCreaturesSpeeds[i] * sin(radians) * deltaT);
@@ -1206,19 +1231,7 @@ void init()
 	cams[activeCamera].camPos[2] = r * cos(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
 	cams[activeCamera].camPos[1] = r * sin(beta * 3.14f / 180.0f);
 
-
-	for (uint16_t i = 0; i < 6; i++) {
-		float random = 0.3 + ((float)rand() / RAND_MAX) * (0.7 - 0.5);
-		waterCreaturesSpeeds[i] = random / 4;
-		random = 1 + ((float)rand() / RAND_MAX) * (360 - 1);
-		waterCreaturesRotationAngles[i] = random;
-		for (uint16_t j = 0; j < 2; j++) {
-			if (j == 1) { continue; }
-			random = (rand() % 101) - 50;
-			waterCreaturesPositions[i][j] = float(random);
-		}
-	}
-
+	resetWaterCreatures();
 
 	float amb[] = { 0.2f, 0.15f, 0.1f, 1.0f };
 	float diff[] = { 0.8f, 0.6f, 0.4f, 1.0f };
