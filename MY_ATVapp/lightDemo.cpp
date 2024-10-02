@@ -80,7 +80,7 @@ GLint spot_loc, spot_loc1;
 GLint spot_angle_loc, spot_angle_loc1;
 GLint spot_dir_loc, spot_dir_loc1;
 GLint direc_loc;
-GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc;
+GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc, fogOnOff_loc;
 
 // Camera Position
 //float cams[activeCamera].camPos[0], cams[activeCamera].camPos[1], cams[activeCamera].camPos[2];
@@ -111,7 +111,7 @@ boat myBoat;
 
 class spotLight {
 public: float position[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-public: float direction[4] = { myBoat.direction[0], myBoat.direction[1], myBoat.direction[2], 0.0f};
+public: float direction[4] = { myBoat.direction[0], myBoat.direction[1], myBoat.direction[2], 0.0f };
 public: float angle = 20.0f;
 };
 
@@ -171,6 +171,7 @@ bool canChangeDirection = true; //when true the boat can change direction, start
 bool dayTime = false;
 bool pointLightsOn = false;
 bool spotLightsOn = false;
+bool fogOn = false;
 
 // Mouse Tracking Variables
 int startX, startY, tracking = 0;
@@ -236,7 +237,7 @@ int checkCollision(float nextBoatCenter[3]) {
 			return 2; //code for collision with island
 		}
 	}
-	if (nextBoatCenter[0] > 48.5f || nextBoatCenter[0] < -48.5f || nextBoatCenter[2]> 48.5f || nextBoatCenter[2]<-48.5f) {
+	if (nextBoatCenter[0] > 48.5f || nextBoatCenter[0] < -48.5f || nextBoatCenter[2]> 48.5f || nextBoatCenter[2] < -48.5f) {
 		return 1; //out of bounds 
 
 	}
@@ -316,7 +317,7 @@ void updateBoat(int direction) {
 	//createBoundingSphere(); //atualizar a bounding sphere do barco
 	for (uint16_t i = 0; i < 2; i++) {
 		spotLights[i].position[0] = myBoat.position[0];
-		spotLights[i].position[1] = myBoat.position[1] + 1.1f + i/2;
+		spotLights[i].position[1] = myBoat.position[1] + 1.1f + i / 2;
 		spotLights[i].position[2] = myBoat.position[2];
 		spotLights[i].direction[0] = myBoat.direction[0];
 		spotLights[i].direction[1] = myBoat.direction[1];
@@ -343,11 +344,6 @@ void changeCreaturesAngle(int value) {
 	glutTimerFunc(5000, changeCreaturesAngle, 0);
 }
 
-void resetWaterCreatureSpeedAfterRespawning(int index) {
-	float random = 0.3 + ((float)rand() / RAND_MAX) * (0.7 - 0.5);
-	waterCreaturesSpeeds[index] = random / 4;
-}
-
 void animateWaterCreatures(int value) {
 	for (uint16_t i = 0; i < 6; i++) {
 		waterCreaturesRotationAngles[i] += 2.0f;
@@ -358,7 +354,6 @@ void animateWaterCreatures(int value) {
 		if (waterCreaturesPositions[i][0] + (waterCreaturesSpeeds[i] * cos(radians) * deltaT) > 50 || waterCreaturesPositions[i][2] + (waterCreaturesSpeeds[i] * cos(radians) * deltaT) > 50 || waterCreaturesPositions[i][0] + (waterCreaturesSpeeds[i] * cos(radians) * deltaT) < -50 || waterCreaturesPositions[i][2] + (waterCreaturesSpeeds[i] * cos(radians) * deltaT) < -50) {
 			waterCreaturesPositions[i][0] = (rand() % 101) - 50;
 			waterCreaturesPositions[i][2] = (rand() % 101) - 50;
-			resetWaterCreatureSpeedAfterRespawning(i);
 		}
 		waterCreaturesPositions[i][0] += (waterCreaturesSpeeds[i] * cos(radians) * deltaT);
 		waterCreaturesPositions[i][2] += (waterCreaturesSpeeds[i] * sin(radians) * deltaT);
@@ -890,6 +885,7 @@ void renderScene(void) {
 	glUniform1i(directOnOff_loc, dayTime); //send boolean variables to shader
 	glUniform1i(pointOnOff_loc, pointLightsOn);
 	glUniform1i(spotOnOff_loc, spotLightsOn);
+	glUniform1i(fogOnOff_loc, fogOn);
 
 	if (dayTime) {
 		multMatrixPoint(VIEW, DirectlightPos, res);
@@ -1015,6 +1011,10 @@ void processKeys(unsigned char key, int xx, int yy)
 		//toggle on/off the spot lights
 		spotLightsOn = !spotLightsOn;
 		//std::cout << "spotLightsOn: " << spotLightsOn << "\n";
+		break;
+	case 'f':
+		//toggle on/off fog
+		fogOn = !fogOn;
 		break;
 	}
 }
@@ -1180,6 +1180,7 @@ GLuint setupShaders() {
 	directOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "dayTime");
 	pointOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "pointLightsOn");
 	spotOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLightsOn");
+	fogOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "fogOn");
 
 
 	// Shader for bitmap Text
