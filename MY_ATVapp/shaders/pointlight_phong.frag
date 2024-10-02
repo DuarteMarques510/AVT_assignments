@@ -37,6 +37,11 @@ uniform DirectionalLight dirLight;
 uniform bool dayTime;
 uniform bool pointLightsOn;
 uniform bool spotLightsOn;
+uniform bool fogOn;
+
+uniform vec3 fogColor = vec3(0.5, 0.6, 0.7);  // Color of the fog
+uniform float fogDensity = 0.03;               // Fog density to control thickness
+uniform int depthFog; 
 
 in Data {
 	vec3 normal;
@@ -44,6 +49,7 @@ in Data {
 	vec3 lightDir;
 } DataIn;
 
+in vec4 pos;
 
 void main() {
 
@@ -97,6 +103,22 @@ void main() {
 		}
 	}
 	
-
-	colorOut = max(color, mat.ambient);
+	if (fogOn) {
+		float dist;
+		if (depthFog == 0) {
+			// Plane-based fog (using depth along the z-axis)
+			dist = abs(pos.z);
+		} else {
+			// Range-based fog (using Euclidean distance from the camera)
+			dist = length(pos);
+		}
+		float fogAmount = exp(-dist * fogDensity); // Exponential fog based on distance
+		fogAmount = clamp(fogAmount, 0.0, 1.0);    // Ensure it's between 0 and 1
+		vec3 finalColor = mix(fogColor, vec3(color), fogAmount);
+		finalColor = max(finalColor, vec3(mat.ambient));
+		colorOut = vec4(finalColor, 1.0); // Output the final color with alpha
+	}
+	else {
+		colorOut = max(color, mat.ambient);
+	}
 }
