@@ -116,9 +116,9 @@ void main() {
 		fogAmount = clamp(fogAmount, 0.0, 1.0);    // Ensure it's between 0 and 1
 		vec3 finalColor = mix(fogColor, vec3(color), fogAmount);
 		finalColor = max(finalColor, vec3(mat.ambient));
-		colorOut = vec4(finalColor, 1.0); // Output the final color with alpha
+		colorOut = vec4(finalColor, mat.diffuse.a); // Output the final color with alpha
 	}
 	else {
-		colorOut = max(color, mat.ambient);
+		colorOut = vec4(max(color, mat.ambient).rgb, mat.diffuse.a);
 	}
 }

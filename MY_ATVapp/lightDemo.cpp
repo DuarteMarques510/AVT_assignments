@@ -183,7 +183,7 @@ float r = 10.0f;
 // Frame counting and FPS computation
 long myTime, timebase = 0, frame = 0;
 char s[32];
-float DirectlightPos[4] = { 1.0f, 100.0f, 1.0f, 0.0f }; //directonal light
+float DirectlightPos[4] = { 50.0f, 100.0f, 50.0f, 0.0f }; //directonal light
 
 
 
@@ -551,6 +551,7 @@ void renderPlain(void) {
 	{
 		translate(MODEL, 0.0f, 0.0f, 0.0f);
 		rotate(MODEL, 270.0f, 1.0f, 0.0f, 0.0f);
+		glDepthMask(GL_FALSE);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
 		glUniform4fv(loc, 1, myMeshes[0].mat.ambient);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
@@ -571,6 +572,7 @@ void renderPlain(void) {
 		glBindVertexArray(myMeshes[0].vao);
 		glDrawElements(myMeshes[0].type, myMeshes[0].numIndexes, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
+		glDepthMask(GL_TRUE);
 	}
 	popMatrix(MODEL);
 }
@@ -839,6 +841,8 @@ void renderScene(void) {
 
 	GLint loc;
 	GLint m_viewport[4];
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glGetIntegerv(GL_VIEWPORT, m_viewport);
 
 	FrameCount++;
@@ -921,11 +925,11 @@ void renderScene(void) {
 
 
 
-	renderPlain();
 	renderBoat();
 	renderRedCylinders();
 	renderFloats();
 	renderIslandsAndTrees();
+	renderPlain();
 	//renderBoundingSphere();
 	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
 	glDisable(GL_DEPTH_TEST);
@@ -1208,6 +1212,8 @@ GLuint setupShaders() {
 void init()
 {
 	MyMesh amesh;
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
 	cams[1].camPos[0] = 0.01f;
 	cams[1].camPos[1] = 50.0f;
 	cams[1].camPos[2] = 0.0f;
@@ -1242,10 +1248,10 @@ void init()
 	float shininess2 = 128.0f;
 	int texcount = 0;
 
-	float amb2[] = { 0.0f, 0.0f, 0.3f, 1.0f }; //cor ambiente do plano
-	float diff2[] = { 0.1f, 0.1f, 0.8f, 1.0f }; //cor difusa do plano  
-	float spec2[] = { 0.9f, 0.9f, 0.9f, 1.0f };
-
+	float amb2[] = { 0.0f, 0.0f, 0.3f, 0.7f }; //cor ambiente do plano
+	float diff2[] = { 0.1f, 0.1f, 0.8f, 0.7f }; //cor difusa do plano  
+	float spec2[] = { 0.9f, 0.9f, 0.9f, 0.7f };
+	emissive[3] = 0.7f;
 	amesh = createQuad(100.0f, 100.0f); // create the plane for the scene
 	memcpy(amesh.mat.ambient, amb2, 4 * sizeof(float));
 	memcpy(amesh.mat.diffuse, diff2, 4 * sizeof(float));
@@ -1254,7 +1260,7 @@ void init()
 	amesh.mat.shininess = shininess;
 	amesh.mat.texCount = texcount;
 	myMeshes.push_back(amesh);
-
+	emissive[3] = 1.0f;
 
 	// create geometry and VAO of the pawn
 	/*amesh = createPawn();
