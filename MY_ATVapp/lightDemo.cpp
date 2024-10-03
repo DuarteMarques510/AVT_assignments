@@ -182,6 +182,8 @@ int startX, startY, tracking = 0;
 float alpha = 39.0f, beta = 51.0f;
 float r = 10.0f;
 
+float cameraOffset[3] = { 10.0f, 3.0f, 0.0f }; // initial position of the camera attached to the boat
+
 // Frame counting and FPS computation
 long myTime, timebase = 0, frame = 0;
 char s[32];
@@ -856,13 +858,14 @@ void renderScene(void) {
 	loadIdentity(MODEL);
 
 	if (activeCamera == 0) {
-		cams[activeCamera].camPos[0] = myBoat.position[0] + 10.0f;
-		cams[activeCamera].camPos[2] = myBoat.position[2];
-		cams[activeCamera].camPos[1] = myBoat.position[1] + 3.0f;
+		// Update the camera position relative to the boat, maintaining the offset
+		cams[activeCamera].camPos[0] = myBoat.position[0] + cameraOffset[0];
+		cams[activeCamera].camPos[1] = myBoat.position[1] + cameraOffset[1];
+		cams[activeCamera].camPos[2] = myBoat.position[2] + cameraOffset[2];
+	
 		cams[activeCamera].camTarget[0] = myBoat.position[0];
 		cams[activeCamera].camTarget[1] = myBoat.position[1];
 		cams[activeCamera].camTarget[2] = myBoat.position[2];
-
 	}
 	// set the camera using a function similar to gluLookAt
 	lookAt(cams[activeCamera].camPos[0], cams[activeCamera].camPos[1], cams[activeCamera].camPos[2], cams[activeCamera].camTarget[0], cams[activeCamera].camTarget[1], cams[activeCamera].camTarget[2], 0, 1, 0);
@@ -1093,42 +1096,70 @@ void processMouseMotion(int xx, int yy)
 	float alphaAux, betaAux;
 	float rAux;
 
+
+	// Scale factor for mouse movement to prevent shaking
+	const float sensitivity = 0.5f;
+
 	deltaX = -xx + startX;
 	deltaY = yy - startY;
 
 	// left mouse button: move camera
 	if (tracking == 1) {
+		// Apply the scaling factor to smooth the rotation
+		alphaAux = alpha + deltaX * sensitivity;
+		betaAux = beta + deltaY * sensitivity;
 
-
-		alphaAux = alpha + deltaX;
-		betaAux = beta + deltaY;
-
+		// Limit the vertical movement to avoid flipping over
 		if (betaAux > 85.0f)
 			betaAux = 85.0f;
-		else if (betaAux < -85.0f)
-			betaAux = -85.0f;
+		else if (betaAux < 0.2f)
+			betaAux = 0.2f;
+
 		rAux = r;
+
+		if (activeCamera == 0) {
+			// Calculate the new camera offset relative to the boat
+			cameraOffset[0] = rAux * sin(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
+			cameraOffset[1] = rAux * sin(betaAux * 3.14f / 180.0f);
+			cameraOffset[2] = rAux * cos(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
+
+			// Update alpha and beta so the new position is remembered
+			alpha = alphaAux;
+			beta = betaAux;
+		}
+
+		// Update the start positions for smooth dragging
+		startX = xx;
+		startY = yy;
 	}
 	// right mouse button: zoom
 	else if (tracking == 2) {
 
 		alphaAux = alpha;
 		betaAux = beta;
-		rAux = r + (deltaY * 0.01f);
+		rAux = r + (deltaY * 0.05f);
 		if (rAux < 0.1f)
 			rAux = 0.1f;
-	}
-	if (activeCamera == 0) {
-		cams[0].camPos[0] = rAux * sin(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
-		cams[0].camPos[2] = rAux * cos(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
-		cams[0].camPos[1] = rAux * sin(betaAux * 3.14f / 180.0f);
-	}
+		if (rAux > 100.0f)
+			rAux = 100.0f;
 
+		if (activeCamera == 0) {
+			// Calculate the new camera offset relative to the boat
+			cameraOffset[0] = rAux * sin(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
+			cameraOffset[1] = rAux * sin(betaAux * 3.14f / 180.0f);
+			cameraOffset[2] = rAux * cos(alphaAux * 3.14f / 180.0f) * cos(betaAux * 3.14f / 180.0f);
+
+			// Update r so the new position is remembered
+			r = rAux;
+		}
+
+		// Update the start positions for smooth dragging
+		startY = yy;
+	}
 
 	//  uncomment this if not using an idle or refresh func
 	//	glutPostRedisplay();
 }
-
 
 
 void mouseWheel(int wheel, int direction, int x, int y) {
@@ -1255,10 +1286,15 @@ void init()
 	Texture2D_Loader(textures, "lightwood.tga", 2);
 
 
-	// set the camera position based on its spherical coordinates
-	cams[activeCamera].camPos[0] = r * sin(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
-	cams[activeCamera].camPos[2] = r * cos(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);
-	cams[activeCamera].camPos[1] = r * sin(beta * 3.14f / 180.0f);
+	// Initialize the camera position based on the initial cameraOffset
+	cams[activeCamera].camPos[0] = myBoat.position[0] + cameraOffset[0];
+	cams[activeCamera].camPos[1] = myBoat.position[1] + cameraOffset[1];
+	cams[activeCamera].camPos[2] = myBoat.position[2] + cameraOffset[2];
+	
+	// Calculate alpha, beta, and r based on the cameraOffset for future movements
+	r = sqrt(pow(cameraOffset[0], 2) + pow(cameraOffset[1], 2) + pow(cameraOffset[2], 2));
+	alpha = atan2(cameraOffset[0], cameraOffset[2]) * 180.0f / 3.14f;
+	beta = atan2(cameraOffset[1], sqrt(pow(cameraOffset[0], 2) + pow(cameraOffset[2], 2))) * 180.0f / 3.14f;
 
 	resetWaterCreatures();
 
