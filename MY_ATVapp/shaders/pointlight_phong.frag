@@ -65,9 +65,9 @@ void main() {
 	vec3 n = normalize(DataIn.normal);
 	vec3 l = normalize(vec3(dirLight.direction));
 	vec3 e = normalize(DataIn.eye);
+	float intensity = max(dot(n,l), 0.0);
 
 	if (dayTime){
-		float intensity = max(dot(n,l), 0.0);
 
 	
 		if (intensity > 0.0) {
@@ -83,7 +83,6 @@ void main() {
 	if (pointLightsOn){
 		for (int i = 0; i < 6; i++) {
 			l = normalize(vec3(pointLights[i].position) + DataIn.eye);
-			float intensity = max(dot(n,l), 0.0);
 			if (intensity > 0.0) {
 				vec3 h = normalize(l + e);
 				float intSpec = max(dot(h,n), 0.0);
@@ -98,7 +97,6 @@ void main() {
 			l = normalize(vec3(spotLights[i].position) + DataIn.eye);
 			float theta = dot(l, normalize(vec3(spotLights[i].direction)));
 			if (theta > cos(radians(spotLights[i].angle))){
-				float intensity = max(dot(n,l), 0.0);
 				if (intensity > 0.0) {
 					vec3 h = normalize(l + e);
 					float intSpec = max(dot(h,n), 0.0);
@@ -131,6 +129,6 @@ void main() {
 	if (texMode==1){
 		texel = texture(texmap2, DataIn.tex_coord);
 		texel1 = texture(texmap1, DataIn.tex_coord);
-		colorOut = max(colorOut, texel*texel1*0.07);
+		colorOut = max(colorOut*texel1*texel, texel*texel1*0.07);
 	}
 }

@@ -187,7 +187,7 @@ float cameraOffset[3] = { 10.0f, 3.0f, 0.0f }; // initial position of the camera
 // Frame counting and FPS computation
 long myTime, timebase = 0, frame = 0;
 char s[32];
-float DirectlightPos[4] = { 50.0f, 100.0f, 50.0f, 0.0f }; //directonal light
+float DirectlightPos[4] = { 200.0f, 1000.0f, 200.0f, 0.0f }; //directonal light
 
 
 
@@ -578,9 +578,9 @@ void renderPlain(void) {
 		glDrawElements(myMeshes[0].type, myMeshes[0].numIndexes, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 		glDepthMask(GL_TRUE);
+		glUniform1i(texMode_uniformId, 0);
 	}
 	popMatrix(MODEL);
-	glUniform1i(texMode_uniformId, 0);
 }
 void renderRedCylinders(void) {
 	GLint loc;
@@ -1282,7 +1282,7 @@ void init()
 
 	glGenTextures(3, textures);
 	Texture2D_Loader(textures, "stone.tga", 0);
-	Texture2D_Loader(textures, "checker.png", 1);
+	Texture2D_Loader(textures, "water_quad.png", 1);
 	Texture2D_Loader(textures, "lightwood.tga", 2);
 
 
@@ -1306,8 +1306,8 @@ void init()
 	float shininess2 = 128.0f;
 	int texcount = 0;
 
-	float amb2[] = { 0.0f, 0.0f, 0.3f, 0.7f }; //cor ambiente do plano
-	float diff2[] = { 0.1f, 0.1f, 0.8f, 0.7f }; //cor difusa do plano  
+	float amb2[] = { 0.0f, 0.15f, 0.3f, 0.7f }; //cor ambiente do plano
+	float diff2[] = { 0.1f, 0.4f, 0.8f, 0.7f }; //cor difusa do plano  
 	float spec2[] = { 0.9f, 0.9f, 0.9f, 0.7f };
 	emissive[3] = 0.7f;
 	amesh = createQuad(100.0f, 100.0f); // create the plane for the scene
