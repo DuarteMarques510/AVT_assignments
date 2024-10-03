@@ -31,7 +31,7 @@
 #include "AVTmathLib.h"
 #include "VertexAttrDef.h"
 #include "geometry.h"
-
+#include "Texture_Loader.h"
 #include "avtFreeType.h"
 
 using namespace std;
@@ -75,12 +75,14 @@ GLint vm_uniformId;
 GLint normal_uniformId;
 GLint lPos_uniformId;
 GLint tex_loc, tex_loc1, tex_loc2;
+GLint texMode_uniformId;
 GLint point_loc, point_loc1, point_loc2, point_loc3, point_loc4, point_loc5;
 GLint spot_loc, spot_loc1;
 GLint spot_angle_loc, spot_angle_loc1;
 GLint spot_dir_loc, spot_dir_loc1;
 GLint direc_loc;
 GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc, fogOnOff_loc;
+GLuint textures[3];
 
 // Camera Position
 //float cams[activeCamera].camPos[0], cams[activeCamera].camPos[1], cams[activeCamera].camPos[2];
@@ -548,7 +550,8 @@ void renderBoat(void) {
 void renderPlain(void) {
 	GLint loc;
 	pushMatrix(MODEL);
-	{
+	{	
+		glUniform1i(texMode_uniformId, 1);
 		translate(MODEL, 0.0f, 0.0f, 0.0f);
 		rotate(MODEL, 270.0f, 1.0f, 0.0f, 0.0f);
 		glDepthMask(GL_FALSE);
@@ -575,6 +578,7 @@ void renderPlain(void) {
 		glDepthMask(GL_TRUE);
 	}
 	popMatrix(MODEL);
+	glUniform1i(texMode_uniformId, 0);
 }
 void renderRedCylinders(void) {
 	GLint loc;
@@ -886,6 +890,17 @@ void renderScene(void) {
 	//multMatrixPoint(VIEW, lightPos, res);   //lightPos definido em World Coord so is converted to eye space
 	//glUniform4fv(lPos_uniformId, 1, res);
 
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, textures[0]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, textures[1]);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, textures[2]);
+	
+	glUniform1i(tex_loc, 0);
+	glUniform1i(tex_loc1, 1);
+	glUniform1i(tex_loc2, 2);
+
 	glUniform1i(directOnOff_loc, dayTime); //send boolean variables to shader
 	glUniform1i(pointOnOff_loc, pointLightsOn);
 	glUniform1i(spotOnOff_loc, spotLightsOn);
@@ -954,6 +969,7 @@ void renderScene(void) {
 	glEnable(GL_DEPTH_TEST);
 	glDisable(GL_BLEND);
 
+	glBindTexture(GL_TEXTURE_2D, 0);
 	glutSwapBuffers();
 }
 
@@ -1160,7 +1176,7 @@ GLuint setupShaders() {
 		printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
 		exit(1);
 	}
-
+	texMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "texMode");
 	pvm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_pvm");
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
@@ -1232,6 +1248,12 @@ void init()
 
 	/// Initialization of freetype library with font_name file
 	freeType_init(font_name);
+
+	glGenTextures(3, textures);
+	Texture2D_Loader(textures, "stone.tga", 0);
+	Texture2D_Loader(textures, "checker.png", 1);
+	Texture2D_Loader(textures, "lightwood.tga", 2);
+
 
 	// set the camera position based on its spherical coordinates
 	cams[activeCamera].camPos[0] = r * sin(alpha * 3.14f / 180.0f) * cos(beta * 3.14f / 180.0f);

@@ -6,6 +6,8 @@ uniform sampler2D texmap2;
 
 out vec4 colorOut;
 
+uniform int texMode;
+
 struct Materials {
 	vec4 diffuse;
 	vec4 ambient;
@@ -47,6 +49,7 @@ in Data {
 	vec3 normal;
 	vec3 eye;
 	vec3 lightDir;
+	vec2 tex_coord;
 } DataIn;
 
 in vec4 pos;
@@ -55,6 +58,9 @@ void main() {
 
 	vec4 spec = vec4(0.0);
 	vec4 color = mat.ambient;
+
+	vec4 texel;
+	vec4 texel1;
 
 	vec3 n = normalize(DataIn.normal);
 	vec3 l = normalize(vec3(dirLight.direction));
@@ -120,5 +126,11 @@ void main() {
 	}
 	else {
 		colorOut = vec4(max(color, mat.ambient).rgb, mat.diffuse.a);
+	}
+
+	if (texMode==1){
+		texel = texture(texmap2, DataIn.tex_coord);
+		texel1 = texture(texmap1, DataIn.tex_coord);
+		colorOut = max(colorOut, texel*texel1*0.07);
 	}
 }

@@ -80,5 +80,11 @@
     <None Include="shaders\pointlight_Gouraud.vert">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="shaders\texture_demo.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="shaders\texture_demo.vert">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
