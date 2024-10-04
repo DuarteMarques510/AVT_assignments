@@ -88,7 +88,7 @@ void main() {
 				float intSpec = max(dot(h,n), 0.0);
 				spec = mat.specular * pow(intSpec, mat.shininess);
 			}
-			color += intensity * mat.diffuse + spec;
+			color += vec4(0.2, 0.2, 0.2, 1.0)*intensity * mat.diffuse + spec;
 		}
 	}
 

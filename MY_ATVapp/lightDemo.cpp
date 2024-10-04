@@ -125,7 +125,7 @@ float deltaT = 0.1f;
 float direction = 1.0f;
 float forceMultiplier = 1.0f;
 
-float floatPositions[6][3] = {
+float floatPositions[6][3] ={
 	{11.0f, 0.0f, 2.0f},
 	{-30.0f, 0.0f, -20.0f},
 	{5.0f, 0.0f, 13.0f},
@@ -170,10 +170,10 @@ camera cams[3];
 int activeCamera = 0;
 
 bool canChangeDirection = true; //when true the boat can change direction, starts at true because the boat starts at speed 0
-bool dayTime = false;
-bool pointLightsOn = false;
-bool spotLightsOn = false;
-bool fogOn = false;
+bool dayTime = true;
+bool pointLightsOn = true;
+bool spotLightsOn = true;
+bool fogOn = true;
 
 // Mouse Tracking Variables
 int startX, startY, tracking = 0;
@@ -191,7 +191,13 @@ float DirectlightPos[4] = { 200.0f, 1000.0f, 200.0f, 0.0f }; //directonal light
 
 
 
-float pointLights[6][4] = { {floatPositions[0][0], 4.0f, floatPositions[0][2], 1.0f}, {floatPositions[1][0], 4.0f, floatPositions[1][2], 1.0f}, {floatPositions[2][0], 4.0f, floatPositions[2][2], 1.0f}, {floatPositions[3][0], 4.0f, floatPositions[3][2], 1.0f}, {floatPositions[4][0], 4.0f, floatPositions[4][2], 1.0f}, {floatPositions[5][0], 4.0f, floatPositions[5][2], 1.0f} };
+float pointLights[6][4] = { {floatPositions[0][0], 4.0f, floatPositions[0][2], 1.0f}, 
+	{floatPositions[1][0], 4.0f, floatPositions[1][2], 1.0f}, 
+	{floatPositions[2][0], 4.0f, floatPositions[2][2], 1.0f}, 
+	{floatPositions[3][0], 4.0f, floatPositions[3][2], 1.0f}, 
+	{floatPositions[4][0], 4.0f, floatPositions[4][2], 1.0f}, 
+	{floatPositions[5][0], 4.0f, floatPositions[5][2], 1.0f} };
+
 float aux = 0;
 float paddleangle[2] = { 0.0f, 0.0f };
 bool paddlemoving[2] = { false, false };
@@ -320,11 +326,11 @@ void updateBoat(int direction) {
 
 	//createBoundingSphere(); //atualizar a bounding sphere do barco
 	for (uint16_t i = 0; i < 2; i++) {
-		spotLights[i].position[0] = myBoat.position[0];
-		spotLights[i].position[1] = myBoat.position[1] + 1.1f + i / 2;
+		spotLights[i].position[0] = myBoat.position[0]+ 0.2 * std::pow(-1, i);
+		spotLights[i].position[1] = myBoat.position[1] + 0.5f + i / 2;
 		spotLights[i].position[2] = myBoat.position[2];
 		spotLights[i].direction[0] = myBoat.direction[0];
-		spotLights[i].direction[1] = myBoat.direction[1];
+		spotLights[i].direction[1] = myBoat.direction[1] + 0.2 * std::pow(-1, i);
 		spotLights[i].direction[2] = -myBoat.direction[2];
 	}
 
