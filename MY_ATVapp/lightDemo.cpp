@@ -84,9 +84,6 @@ GLint direc_loc;
 GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc, fogOnOff_loc;
 GLuint textures[3];
 
-// Camera Position
-//float cams[activeCamera].camPos[0], cams[activeCamera].camPos[1], cams[activeCamera].camPos[2];
-
 //Camera Class
 class camera {
 public:	float camPos[3] = { 0.0f, 0.0f, 0.0f };
@@ -100,8 +97,6 @@ public: float direction[3] = { 1.0f, 0.0f, 0.0f }; //vetor diretor da direção 
 public: float position[3] = { 25.0f, 0.0f, 0.0f };
 public: float angle = 0.0f;
 public: float angularSpeed = 0.0f;
-	  //public: float center[3] = { 0.0f, 0.5f, 0.0f }; //como o barco não roda sobre o seu centro é dificil uma esfera envolvente que o envolva completamente, o mais facil é criar uma com raio igual à diagonal do barco ara cobrir o barco e a sua rotação
-	  //public: float radius = 0.75f;
 public: float center[3] = { 25.0f, 0.5f, 0.0f };
 public: float radius = std::sqrt(2);
 };
@@ -125,7 +120,7 @@ float deltaT = 0.1f;
 float direction = 1.0f;
 float forceMultiplier = 1.0f;
 
-float floatPositions[6][3] ={
+float floatPositions[6][3] = {
 	{11.0f, 0.0f, 2.0f},
 	{-30.0f, 0.0f, -20.0f},
 	{5.0f, 0.0f, 13.0f},
@@ -137,15 +132,7 @@ float floatPositions[6][3] ={
 
 float floatRadius = 0.5f;
 
-float waterCreaturesPositions[6][3] = {
-	{10.0f, 0.0f, 10.0f},
-	{-14.0f, 0.0f, -12.0f},
-	{16.0f, 0.0f, 12.0f},
-	{-6.0f, 0.0f, 36.0f},
-	{-12.0f, 0.0f, 10.0f},
-	{10.0f, 0.0f, -22.0f}
-
-};
+float waterCreaturesPositions[6][3];
 
 float waterCreaturesRotationAngles[6];
 
@@ -191,11 +178,11 @@ float DirectlightPos[4] = { 200.0f, 1000.0f, 200.0f, 0.0f }; //directonal light
 
 
 
-float pointLights[6][4] = { {floatPositions[0][0], 4.0f, floatPositions[0][2], 1.0f}, 
-	{floatPositions[1][0], 4.0f, floatPositions[1][2], 1.0f}, 
-	{floatPositions[2][0], 4.0f, floatPositions[2][2], 1.0f}, 
-	{floatPositions[3][0], 4.0f, floatPositions[3][2], 1.0f}, 
-	{floatPositions[4][0], 4.0f, floatPositions[4][2], 1.0f}, 
+float pointLights[6][4] = { {floatPositions[0][0], 4.0f, floatPositions[0][2], 1.0f},
+	{floatPositions[1][0], 4.0f, floatPositions[1][2], 1.0f},
+	{floatPositions[2][0], 4.0f, floatPositions[2][2], 1.0f},
+	{floatPositions[3][0], 4.0f, floatPositions[3][2], 1.0f},
+	{floatPositions[4][0], 4.0f, floatPositions[4][2], 1.0f},
 	{floatPositions[5][0], 4.0f, floatPositions[5][2], 1.0f} };
 
 float aux = 0;
@@ -203,21 +190,13 @@ float paddleangle[2] = { 0.0f, 0.0f };
 bool paddlemoving[2] = { false, false };
 int paddlesMoving = 0;
 
-//void createBoundingSphere() {
-//	myBoat.center[0] = myBoat.position[0] - (0.5f * myBoat.direction[0]);
-//	myBoat.center[1] = myBoat.position[1] + (0.5f); //não é preciso direção porque a altura do barco é constante
-//	myBoat.center[2] = myBoat.position[2] + (0.5f * myBoat.direction[2]);
-//
-//	//myBoat.radius = std::sqrt(3 * std::pow(0.5f, 2));
-//}
-
 void resetWaterCreatures() { //reset the water creatures positions and speeds after colision with one of them
 	for (uint16_t i = 0; i < 6; i++) {
 		float random = 0.3 + ((float)rand() / RAND_MAX) * (0.7 - 0.5);
 		waterCreaturesSpeeds[i] = random / 4;
 		random = 1 + ((float)rand() / RAND_MAX) * (360 - 1);
 		waterCreaturesRotationAngles[i] = random;
-		for (uint16_t j = 0; j < 2; j++) {
+		for (uint16_t j = 0; j < 3; j++) {
 			if (j == 1) { continue; }
 			random = (rand() % 101) - 50;
 			waterCreaturesPositions[i][j] = float(random);
@@ -285,8 +264,6 @@ void updateBoat(int direction) {
 	if (collision == 0) { //if no colision and boat is in bounds move the boat and its center
 		myBoat.position[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction; //subtração porque assim a combinação do cosseno e seno dá a direção correta
 		myBoat.center[0] -= (myBoat.speed * myBoat.direction[0] * deltaT) * direction;
-		//myBoat.position[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
-		//myBoat.center[1] += (myBoat.speed * myBoat.direction[1] * deltaT) * direction;
 		myBoat.position[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
 		myBoat.center[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
 	}
@@ -326,7 +303,7 @@ void updateBoat(int direction) {
 
 	//createBoundingSphere(); //atualizar a bounding sphere do barco
 	for (uint16_t i = 0; i < 2; i++) {
-		spotLights[i].position[0] = myBoat.position[0]+ 0.2 * std::pow(-1, i);
+		spotLights[i].position[0] = myBoat.position[0] + 0.2 * std::pow(-1, i);
 		spotLights[i].position[1] = myBoat.position[1] + 0.5f + i / 2;
 		spotLights[i].position[2] = myBoat.position[2];
 		spotLights[i].direction[0] = myBoat.direction[0];
@@ -497,7 +474,6 @@ void renderBoat(void) {
 					rotate(MODEL, paddleangle[i], -0.075f * direction, -0.2f * direction, 0.0f);
 				}
 				if (paddleangle[i] >= 360.0f) {
-					//paddlemoving[i] = false;
 					paddleangle[i] = 0.0f;
 				}
 
@@ -558,7 +534,7 @@ void renderBoat(void) {
 void renderPlain(void) {
 	GLint loc;
 	pushMatrix(MODEL);
-	{	
+	{
 		glUniform1i(texMode_uniformId, 1);
 		translate(MODEL, 0.0f, 0.0f, 0.0f);
 		rotate(MODEL, 270.0f, 1.0f, 0.0f, 0.0f);
@@ -868,7 +844,7 @@ void renderScene(void) {
 		cams[activeCamera].camPos[0] = myBoat.position[0] + cameraOffset[0];
 		cams[activeCamera].camPos[1] = myBoat.position[1] + cameraOffset[1];
 		cams[activeCamera].camPos[2] = myBoat.position[2] + cameraOffset[2];
-	
+
 		cams[activeCamera].camTarget[0] = myBoat.position[0];
 		cams[activeCamera].camTarget[1] = myBoat.position[1];
 		cams[activeCamera].camTarget[2] = myBoat.position[2];
@@ -889,15 +865,9 @@ void renderScene(void) {
 
 	// use our shader
 
-	glUseProgram(shader.getProgramIndex());
-
-	//send the light position in eye coordinates
-	//glUniform4fv(lPos_uniformId, 1, lightPos); //efeito capacete do mineiro, ou seja lighPos foi definido em eye coord 
+	glUseProgram(shader.getProgramIndex()); 
 
 	float res[4];
-
-	//multMatrixPoint(VIEW, lightPos, res);   //lightPos definido em World Coord so is converted to eye space
-	//glUniform4fv(lPos_uniformId, 1, res);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textures[0]);
@@ -905,7 +875,7 @@ void renderScene(void) {
 	glBindTexture(GL_TEXTURE_2D, textures[1]);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, textures[2]);
-	
+
 	glUniform1i(tex_loc, 0);
 	glUniform1i(tex_loc1, 1);
 	glUniform1i(tex_loc2, 2);
@@ -954,8 +924,6 @@ void renderScene(void) {
 	renderFloats();
 	renderIslandsAndTrees();
 	renderPlain();
-	//renderBoundingSphere();
-	//Render text (bitmap fonts) in screen coordinates. So use ortoghonal projection with viewport coordinates.
 	glDisable(GL_DEPTH_TEST);
 	//the glyph contains transparent background colors and non-transparent for the actual character pixels. So we use the blending
 	glEnable(GL_BLEND);
@@ -970,8 +938,6 @@ void renderScene(void) {
 	pushMatrix(VIEW);
 	loadIdentity(VIEW);
 	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
-	//RenderText(shaderText, "This is a sample text", 25.0f, 25.0f, 1.0f, 0.5f, 0.8f, 0.2f);
-	//RenderText(shaderText, "AVT Light and Text Rendering Demo", 440.0f, 570.0f, 0.5f, 0.3, 0.7f, 0.9f);
 	popMatrix(PROJECTION);
 	popMatrix(VIEW);
 	popMatrix(MODEL);
@@ -994,10 +960,6 @@ void processKeys(unsigned char key, int xx, int yy)
 	case 27:
 		glutLeaveMainLoop();
 		break;
-
-		/*case 'c':
-			printf("Camera Spherical Coordinates (%f, %f, %f)\n", alpha, beta, r);
-			break;*/
 	case 'm': glEnable(GL_MULTISAMPLE); break;
 	case '1':
 		activeCamera = 0;
@@ -1029,17 +991,14 @@ void processKeys(unsigned char key, int xx, int yy)
 	case 'n':
 		//ligar ou desligar a luz direcional (dayTime)
 		dayTime = !dayTime;
-		//std::cout << "dayTime: " << dayTime << "\n";
 		break;
 	case 'c':
 		//toggle on/off the point lights
 		pointLightsOn = !pointLightsOn;
-		//std::cout << "pointLightsOn: " << pointLightsOn << "\n";
 		break;
 	case 'h':
 		//toggle on/off the spot lights
 		spotLightsOn = !spotLightsOn;
-		//std::cout << "spotLightsOn: " << spotLightsOn << "\n";
 		break;
 	case 'f':
 		//toggle on/off fog
@@ -1186,7 +1145,7 @@ void mouseWheel(int wheel, int direction, int x, int y) {
 
 // --------------------------------------------------------
 //
-// Shader Stuff
+// Shaders
 //
 
 
@@ -1196,14 +1155,11 @@ GLuint setupShaders() {
 	shader.init();
 	shader.loadShader(VSShaderLib::VERTEX_SHADER, "shaders/pointlight_phong.vert");
 	shader.loadShader(VSShaderLib::FRAGMENT_SHADER, "shaders/pointlight_phong.frag");
-	//shader.loadShader(VSShaderLib::VERTEX_SHADER, "shaders/pointlight_Gouraud.vert");
-	//shader.loadShader(VSShaderLib::FRAGMENT_SHADER, "shaders/pointlight_Gouraud.frag");
 
 	// set semantics for the shader variables
 	glBindFragDataLocation(shader.getProgramIndex(), 0, "colorOut");
 	glBindAttribLocation(shader.getProgramIndex(), VERTEX_COORD_ATTRIB, "position");
 	glBindAttribLocation(shader.getProgramIndex(), NORMAL_ATTRIB, "normal");
-	//glBindAttribLocation(shader.getProgramIndex(), TEXTURE_COORD_ATTRIB, "texCoord");
 
 	glLinkProgram(shader.getProgramIndex());
 	printf("InfoLog for Model Rendering Shader\n%s\n\n", shaderText.getAllInfoLogs().c_str());
@@ -1265,6 +1221,7 @@ GLuint setupShaders() {
 void init()
 {
 	MyMesh amesh;
+	srand(time(NULL));
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	cams[1].camPos[0] = 0.01f;
@@ -1296,7 +1253,7 @@ void init()
 	cams[activeCamera].camPos[0] = myBoat.position[0] + cameraOffset[0];
 	cams[activeCamera].camPos[1] = myBoat.position[1] + cameraOffset[1];
 	cams[activeCamera].camPos[2] = myBoat.position[2] + cameraOffset[2];
-	
+
 	// Calculate alpha, beta, and r based on the cameraOffset for future movements
 	r = sqrt(pow(cameraOffset[0], 2) + pow(cameraOffset[1], 2) + pow(cameraOffset[2], 2));
 	alpha = atan2(cameraOffset[0], cameraOffset[2]) * 180.0f / 3.14f;
@@ -1325,27 +1282,6 @@ void init()
 	amesh.mat.texCount = texcount;
 	myMeshes.push_back(amesh);
 	emissive[3] = 1.0f;
-
-	// create geometry and VAO of the pawn
-	/*amesh = createPawn();
-	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
-	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
-	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
-	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
-	amesh.mat.shininess = shininess;
-	amesh.mat.texCount = texcount;
-	myMeshes.push_back(amesh);*/
-
-
-	// create geometry and VAO of the sphere
-	/*amesh = createSphere(1.0f, 20);
-	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
-	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
-	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
-	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
-	amesh.mat.shininess = shininess;
-	amesh.mat.texCount = texcount;
-	myMeshes.push_back(amesh);*/
 
 	float amb1[] = { 0.3f, 0.0f, 0.0f, 1.0f }; //cor ambiente do cilindro
 	float diff1[] = { 0.8f, 0.1f, 0.1f, 1.0f }; //cor difusa do cilindro ou cor do material 
@@ -1547,9 +1483,7 @@ int main(int argc, char** argv) {
 	glutReshapeFunc(changeSize);
 
 	glutTimerFunc(0, timer, 0);
-	//glutIdleFunc(renderScene);  // Use it for maximum performance
 	glutTimerFunc(0, refresh, 0);    //use it to to get 60 FPS whatever
-	//glutTimerFunc(0, updateBoat, direction);
 	glutTimerFunc(0, accelerateCreatures, 0);
 	glutTimerFunc(0, changeCreaturesAngle, 0);
 	glutTimerFunc(0, animateWaterCreatures, 0);
