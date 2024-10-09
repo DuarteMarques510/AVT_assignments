@@ -161,6 +161,7 @@ bool dayTime = true;
 bool pointLightsOn = true;
 bool spotLightsOn = true;
 bool fogOn = true;
+bool paused = false;
 
 // Mouse Tracking Variables
 int startX, startY, tracking = 0;
@@ -190,7 +191,15 @@ float paddleangle[2] = { 0.0f, 0.0f };
 bool paddlemoving[2] = { false, false };
 int paddlesMoving = 0;
 
+int timeSeconds = 0;
+int timeMinutes = 0;
+int piranhaLevel = 0;
+int piranhaTimer = 0;
+int piranhaAngleTimer = 0;
+int remainingLives = 5;
+
 void resetWaterCreatures() { //reset the water creatures positions and speeds after colision with one of them
+	piranhaLevel = 1;
 	for (uint16_t i = 0; i < 6; i++) {
 		float random = 0.3 + ((float)rand() / RAND_MAX) * (0.7 - 0.5);
 		waterCreaturesSpeeds[i] = random / 4;
@@ -235,6 +244,10 @@ int checkCollision(float nextBoatCenter[3]) {
 
 
 void updateBoat(int direction) {
+	if (paused) {
+		glutTimerFunc(1000 / 60, updateBoat, direction);
+		return;
+	}
 
 	for (uint16_t i = 0; i < 2; i++) {
 		if (paddlemoving[i] == true) {
@@ -268,6 +281,12 @@ void updateBoat(int direction) {
 		myBoat.center[2] += (myBoat.speed * myBoat.direction[2] * deltaT) * direction;
 	}
 	else if (collision == -1) { //colision with piranha, failure, reset boat
+		remainingLives--;
+		if (remainingLives == 0) {
+			exit(0);
+		}
+		//piranhaTimer = 0;		//uncomment if you think piranha timers shoulb be reset after collsion
+		//piranhaAngleTimer = 0;
 		myBoat.speed = 0.0f;
 		myBoat.angularSpeed = 0.0f;
 		myBoat.position[0] = 25.0f;
@@ -312,26 +331,66 @@ void updateBoat(int direction) {
 	}
 
 	glutPostRedisplay();
+	glutTimerFunc(1000/60, updateBoat, direction);
 }
 
 void accelerateCreatures(int value) {
-	for (uint16_t i = 0; i < 6; i++) {
-		waterCreaturesSpeeds[i] = waterCreaturesSpeeds[i] * 2;
+	if (paused) {
+		glutTimerFunc(1000/60, accelerateCreatures, 0);
+		return;
+	}
+	if (piranhaTimer == 30) {
+		for (uint16_t i = 0; i < 6; i++) {
+			waterCreaturesSpeeds[i] = waterCreaturesSpeeds[i] * 2;
+		}
+		piranhaLevel++;
+		piranhaTimer = 0;
+
 	}
 	glutPostRedisplay();
-	glutTimerFunc(30000, accelerateCreatures, 0);
+	glutTimerFunc(1000/60, accelerateCreatures, 0);
+}
+
+void incrementTimer(int value) {
+	if (paused) {
+		glutTimerFunc(1000, incrementTimer, 0);
+		return;
+	}
+	timeSeconds++;
+	piranhaTimer++;
+	piranhaAngleTimer++;
+	
+	if (timeSeconds == 60) {
+		timeMinutes++;
+		timeSeconds = 0;
+	}
+	glutPostRedisplay();
+	glutTimerFunc(1000, incrementTimer, 0);
 }
 
 void changeCreaturesAngle(int value) {
-	for (uint16_t i = 0; i < 6; i++) {
-		float angle = float((rand() % 181) + (waterCreaturesAngles[i] - 90));
-		waterCreaturesAngles[i] = angle;
+	if (paused) {
+		glutTimerFunc(1000/60, changeCreaturesAngle, 0);
+		return;
 	}
+	if (piranhaAngleTimer == 5) {
+		piranhaAngleTimer = 0;
+		for (uint16_t i = 0; i < 6; i++) {
+			float angle = float((rand() % 181) + (waterCreaturesAngles[i] - 90));
+			waterCreaturesAngles[i] = angle;
+		}
+	}
+	
 	glutPostRedisplay();
-	glutTimerFunc(5000, changeCreaturesAngle, 0);
+	glutTimerFunc(1000/60, changeCreaturesAngle, 0);
 }
 
 void animateWaterCreatures(int value) {
+
+	if (paused) {
+		glutTimerFunc(1000 / 60, animateWaterCreatures, 0);
+		return;
+	}
 	for (uint16_t i = 0; i < 6; i++) {
 		waterCreaturesRotationAngles[i] += 2.0f;
 		if (waterCreaturesRotationAngles[i] >= 360.0f) {
@@ -363,7 +422,6 @@ void timer(int value)
 
 void refresh(int value)
 {
-	updateBoat(direction);
 	glutPostRedisplay();
 	glutTimerFunc(1000 / 60, refresh, 0);
 }
@@ -938,6 +996,15 @@ void renderScene(void) {
 	pushMatrix(VIEW);
 	loadIdentity(VIEW);
 	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
+	std::string timeString = "Time: " + std::to_string(timeMinutes) + ":" + std::to_string(timeSeconds);
+	RenderText(shaderText, timeString.c_str(), 50.0f, 50.0f, 1.0f, 0.8f, 0.5f, 0.2f);
+	if (paused) {
+		RenderText(shaderText, "PAUSE!", 440.0f, 570.0f, 0.5f, 0.9, 0.3f, 0.9f);
+	}
+	std::string piranhaString = "Piranha Level: " + std::to_string(piranhaLevel);
+	RenderText(shaderText, piranhaString.c_str(), 800.0f, 600.0f, 1.0f, 0.8f, 0.5f, 0.2f);
+	std::string lives = "Remaining Lives: " + std::to_string(remainingLives);
+	RenderText(shaderText, lives.c_str(), 50.0f, 600.0f, 1.0f, 0.8f, 0.5f, 0.2f);
 	popMatrix(PROJECTION);
 	popMatrix(VIEW);
 	popMatrix(MODEL);
@@ -962,49 +1029,88 @@ void processKeys(unsigned char key, int xx, int yy)
 		break;
 	case 'm': glEnable(GL_MULTISAMPLE); break;
 	case '1':
+		if (paused) {
+			break;
+		}
 		activeCamera = 0;
 		break;
 	case '2':
+		if (paused) {
+			break;
+		}
 		activeCamera = 1;
 		break;
 	case '3':
+		if (paused) {
+			break;
+		}
 		activeCamera = 2;
 		break;
 	case 'a':
+		if (paused) {
+			break;
+		}
 		//mexer cubo segundo um angulo e velocidade para a esquerda
 		paddlemoving[1] = true;
 		break;
 	case 'd':
+		if (paused) {
+			break;
+		}
 		//mexer cubo segundo um angulo e velocidade para a direita
 		paddlemoving[0] = true;
 		break;
 	case 's':
 		//toggle inverter direção frente/trás
+		if (paused) {
+			break;
+		}
 		if (canChangeDirection) {
 			direction = direction * (-1.0f);
 		}
 		break;
 	case 'o':
 		//duplica a força atual das remadas
+		if (paused) {
+			break;
+		}
 		forceMultiplier = forceMultiplier * 2.0f;
 		break;
 	case 'n':
+		if (paused) {
+			break;
+		}
 		//ligar ou desligar a luz direcional (dayTime)
 		dayTime = !dayTime;
 		break;
 	case 'c':
 		//toggle on/off the point lights
+		if (paused) {
+			break;
+		}
 		pointLightsOn = !pointLightsOn;
 		break;
 	case 'h':
 		//toggle on/off the spot lights
+		if (paused) {
+			break;
+		}
 		spotLightsOn = !spotLightsOn;
 		break;
 	case 'f':
 		//toggle on/off fog
+		if (paused) {
+			break;
+		}
 		fogOn = !fogOn;
 		break;
+
+	case 'p':
+		//pause the game
+		paused = !paused;
+		break;
 	}
+	
 }
 
 void processKeysUp(unsigned char key, int xx, int yy)
@@ -1026,7 +1132,10 @@ void processKeysUp(unsigned char key, int xx, int yy)
 //
 
 void processMouseButtons(int button, int state, int xx, int yy)
-{
+{	
+	if (paused) {
+		return;
+	}
 	// start tracking the mouse
 	if (state == GLUT_DOWN) {
 		startX = xx;
@@ -1056,7 +1165,9 @@ void processMouseButtons(int button, int state, int xx, int yy)
 
 void processMouseMotion(int xx, int yy)
 {
-
+	if (paused) {
+		return;
+	}
 	int deltaX, deltaY;
 	float alphaAux, betaAux;
 	float rAux;
@@ -1484,9 +1595,11 @@ int main(int argc, char** argv) {
 
 	glutTimerFunc(0, timer, 0);
 	glutTimerFunc(0, refresh, 0);    //use it to to get 60 FPS whatever
+	glutTimerFunc(0, updateBoat, direction);
 	glutTimerFunc(0, accelerateCreatures, 0);
 	glutTimerFunc(0, changeCreaturesAngle, 0);
 	glutTimerFunc(0, animateWaterCreatures, 0);
+	glutTimerFunc(0, incrementTimer, 0);
 
 	//	Mouse and Keyboard Callbacks
 	glutKeyboardFunc(processKeys);
