@@ -26,6 +26,9 @@
 
 #include <IL/il.h>
 
+#include "assimp/Importer.hpp"
+#include "assimp/scene.h"
+
 
 // Use Very Simple Libs
 #include "VSShaderlib.h"
@@ -34,6 +37,7 @@
 #include "geometry.h"
 #include "Texture_Loader.h"
 #include "avtFreeType.h"
+#include "meshFromAssimp.h"
 
 using namespace std;
 
@@ -43,15 +47,29 @@ int WinX = 1024, WinY = 768;
 
 unsigned int FrameCount = 0;
 
+Assimp::Importer importerSpider;
+//outro assimp se quisermos carregar outra malha
+
+const aiScene* sceneSpider;
+//outro scene se quisermos carregar outra malha
+
+float scaleFactorSpider;
+
+char model_dir[50];
+//outro scaleFactor se quisermos carregar outra malha
+
 //shaders
 VSShaderLib shader;  //geometry
 VSShaderLib shaderText;  //render bitmap text
+
+bool normalMapKey = true;
 
 //File with the font
 const string font_name = "fonts/arial.ttf";
 
 //Vector with meshes
 vector<struct MyMesh> myMeshes;
+struct MyMesh waterMesh;
 vector<struct MyMesh> boatMeshes;
 vector<struct MyMesh> floats;
 vector<struct MyMesh> floatCylinders;
@@ -61,6 +79,7 @@ vector<struct MyMesh> islandLeaves;
 vector<struct MyMesh> islandHouseBodies;
 vector<struct MyMesh> islandHouseRoofs;
 vector<struct MyMesh> auxMeshes;
+vector<struct MyMesh> waterCreatureSpider;
 
 //External array storage defined in AVTmathLib.cpp
 
@@ -83,7 +102,10 @@ GLint spot_angle_loc, spot_angle_loc1;
 GLint spot_dir_loc, spot_dir_loc1;
 GLint direc_loc;
 GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc, fogOnOff_loc;
+GLint normalMap_loc, specularMap_loc, diffMapCount_loc;
 GLuint textures[3];
+GLuint* texturesIds;
+//outro GLuint* se quisermos carregar outra textura para outra malha
 
 //Camera Class
 class camera {
@@ -463,6 +485,96 @@ void changeSize(int w, int h) {
 //
 // Render stufff
 //
+void aiRecursive_render(const aiNode* nd, vector<struct MyMesh>& myMeshes, GLuint*& textureIds) {
+
+	GLint loc;
+	// Get node transformation matrix
+	aiMatrix4x4 m = nd->mTransformation;
+	// OpenGL matrices are column major
+	m.Transpose();
+	// save model matrix and apply node transformation
+	pushMatrix(MODEL);
+	float aux[16];
+	memcpy(aux, &m, 16 * sizeof(float));
+
+	multMatrix(MODEL, aux);
+
+	// draw all meshes assigned to this node
+	for (unsigned int n=0; n < nd->mNumMeshes; ++n) {
+		//send material data to shader
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+		glUniform4fv(loc, 1, myMeshes[nd->mMeshes[n]].mat.ambient);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+		glUniform4fv(loc, 1, myMeshes[nd->mMeshes[n]].mat.diffuse);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+		glUniform4fv(loc, 1, myMeshes[nd->mMeshes[n]].mat.specular);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+		glUniform1f(loc, myMeshes[nd->mMeshes[n]].mat.shininess);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, myMeshes[nd->mMeshes[n]].mat.texCount);
+
+		unsigned int diffMapCount = 0;
+
+		glUniform1i(normalMap_loc, false);
+		glUniform1i(specularMap_loc, false);
+		glUniform1i(diffMapCount_loc, 0);
+
+		if (myMeshes[nd->mMeshes[n]].mat.texCount != 0)
+			for (unsigned int i = 0; i < myMeshes[nd->mMeshes[n]].mat.texCount; ++i) {
+
+				//Activate a TU with a Texture Object
+				GLuint TU = myMeshes[nd->mMeshes[n]].texUnits[i];
+				glActiveTexture(GL_TEXTURE0 + TU);
+				glBindTexture(GL_TEXTURE_2D, textureIds[TU]);
+
+				if (myMeshes[nd->mMeshes[n]].texTypes[i] == DIFFUSE) {
+					if (diffMapCount == 0) {
+						diffMapCount++;
+						loc = glGetUniformLocation(shader.getProgramIndex(), "texUnitDiff");
+						glUniform1i(loc, TU);
+						glUniform1ui(diffMapCount_loc, diffMapCount);
+					}
+					else if (diffMapCount == 1) {
+						diffMapCount++;
+						loc = glGetUniformLocation(shader.getProgramIndex(), "texUnitDiff1");
+						glUniform1i(loc, TU);
+						glUniform1ui(diffMapCount_loc, diffMapCount);
+					}
+					else printf("Only supports a Material with a maximum of 2 diffuse textures\n");
+				}
+				else if (myMeshes[nd->mMeshes[n]].texTypes[i] == SPECULAR) {
+					loc = glGetUniformLocation(shader.getProgramIndex(), "texUnitSpec");
+					glUniform1i(loc, TU);
+					glUniform1i(specularMap_loc, true);
+				}
+				else if (myMeshes[nd->mMeshes[n]].texTypes[i] == NORMALS) { //Normal map
+					loc = glGetUniformLocation(shader.getProgramIndex(), "texUnitNormalMap");
+					if (normalMapKey)
+						glUniform1i(normalMap_loc, normalMapKey);
+					glUniform1i(loc, TU);
+
+				}
+				else printf("Texture Map not supported\n");
+			}
+		//send matrices to OGL
+		computeDerivedMatrix(PROJ_VIEW_MODEL);
+		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+		computeNormalMatrix3x3();
+		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+		//bind VAO and draw
+		glBindVertexArray(myMeshes[nd->mMeshes[n]].vao);
+		glDrawElements(myMeshes[nd->mMeshes[n]].type, myMeshes[nd->mMeshes[n]].numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+
+	}
+	// draw all children
+	for (unsigned int n = 0; n < nd->mNumChildren; ++n) {
+		aiRecursive_render(nd->mChildren[n], myMeshes, textureIds);
+	}
+	popMatrix(MODEL);
+}
 
 void renderBoat(void) {
 	//render the boat
@@ -604,13 +716,13 @@ void renderPlain(void) {
 		rotate(MODEL, 270.0f, 1.0f, 0.0f, 0.0f);
 		glDepthMask(GL_FALSE);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-		glUniform4fv(loc, 1, myMeshes[0].mat.ambient);
+		glUniform4fv(loc, 1, waterMesh.mat.ambient);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-		glUniform4fv(loc, 1, myMeshes[0].mat.diffuse);
+		glUniform4fv(loc, 1, waterMesh.mat.diffuse);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-		glUniform4fv(loc, 1, myMeshes[0].mat.specular);
+		glUniform4fv(loc, 1, waterMesh.mat.specular);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-		glUniform1f(loc, myMeshes[0].mat.shininess);
+		glUniform1f(loc, waterMesh.mat.shininess);
 
 		//compute and send the matrices to the shader
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -620,8 +732,8 @@ void renderPlain(void) {
 		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
 
 		//render the parent mesh
-		glBindVertexArray(myMeshes[0].vao);
-		glDrawElements(myMeshes[0].type, myMeshes[0].numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(waterMesh.vao);
+		glDrawElements(waterMesh.type, waterMesh.numIndexes, GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 		glDepthMask(GL_TRUE);
 		glUniform1i(texMode_uniformId, 0);
@@ -630,32 +742,39 @@ void renderPlain(void) {
 }
 void renderRedCylinders(void) {
 	GLint loc;
-	for (uint16_t i = 1; i < numberOfCreatures + 1; i++) {
+	for (uint16_t i = 0; i < numberOfCreatures ; i++) {
 		pushMatrix(MODEL);
 		{
-			translate(MODEL, waterCreaturesPositions[i - 1][0], waterCreaturesPositions[i - 1][1] - 0.4f, waterCreaturesPositions[i - 1][2]);
-			rotate(MODEL, 90.0f, 1.0f, 0.0f, 0.0f);
-			rotate(MODEL, waterCreaturesRotationAngles[i - 1], 0.0f, 0.0f, 1.0f);
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-			glUniform4fv(loc, 1, myMeshes[i].mat.ambient);
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-			glUniform4fv(loc, 1, myMeshes[i].mat.diffuse);
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-			glUniform4fv(loc, 1, myMeshes[i].mat.specular);
-			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-			glUniform1f(loc, myMeshes[i].mat.shininess);
+			translate(MODEL, waterCreaturesPositions[i][0], waterCreaturesPositions[i][1], waterCreaturesPositions[i][2]);
+
+			//comment lines below without comment to swap red cylinders for spiders and and uncomment the ones that had comments before to swap back
+
+			scale(MODEL, scaleFactorSpider, scaleFactorSpider, scaleFactorSpider);
+			scale(MODEL, 1.5f, 1.5f, 1.5f);
+			//rotate(MODEL, 90.0f, 1.0f, 0.0f, 0.0f);
+			//rotate(MODEL, waterCreaturesRotationAngles[i], 0.0f, 0.0f, 1.0f);
+			rotate(MODEL, waterCreaturesRotationAngles[i], 0.0f, 1.0f, 0.0f);
+			//loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+			//glUniform4fv(loc, 1, myMeshes[i].mat.ambient);
+			//loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			//glUniform4fv(loc, 1, myMeshes[i].mat.diffuse);
+			//loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+			//glUniform4fv(loc, 1, myMeshes[i].mat.specular);
+			//loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+			//glUniform1f(loc, myMeshes[i].mat.shininess);
 
 			//compute and send the matrices to the shader
-			computeDerivedMatrix(PROJ_VIEW_MODEL);
-			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-			computeNormalMatrix3x3();
-			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+			//computeDerivedMatrix(PROJ_VIEW_MODEL);
+			//glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			//glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			//computeNormalMatrix3x3();
+			//glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
 
-			//render the parent mesh
-			glBindVertexArray(myMeshes[i].vao);
-			glDrawElements(myMeshes[i].type, myMeshes[i].numIndexes, GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);
+			
+			//glBindVertexArray(myMeshes[i].vao);
+			//glDrawElements(myMeshes[i].type, myMeshes[i].numIndexes, GL_UNSIGNED_INT, 0);
+			//glBindVertexArray(0);
+			aiRecursive_render(sceneSpider->mRootNode, waterCreatureSpider, texturesIds);
 		}
 		popMatrix(MODEL);
 	}
@@ -1313,6 +1432,9 @@ GLuint setupShaders() {
 	glBindFragDataLocation(shader.getProgramIndex(), 0, "colorOut");
 	glBindAttribLocation(shader.getProgramIndex(), VERTEX_COORD_ATTRIB, "position");
 	glBindAttribLocation(shader.getProgramIndex(), NORMAL_ATTRIB, "normal");
+	glBindAttribLocation(shader.getProgramIndex(), TEXTURE_COORD_ATTRIB, "texCoord");
+	glBindAttribLocation(shader.getProgramIndex(), TANGENT_ATTRIB, "tangent");
+	glBindAttribLocation(shader.getProgramIndex(), BITANGENT_ATTRIB, "bitangent");
 
 	glLinkProgram(shader.getProgramIndex());
 	printf("InfoLog for Model Rendering Shader\n%s\n\n", shaderText.getAllInfoLogs().c_str());
@@ -1327,6 +1449,9 @@ GLuint setupShaders() {
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
 	lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "l_pos");
+	normalMap_loc = glGetUniformLocation(shader.getProgramIndex(), "normalMap");
+	specularMap_loc = glGetUniformLocation(shader.getProgramIndex(), "specularMap");
+	diffMapCount_loc = glGetUniformLocation(shader.getProgramIndex(), "diffMapCount");
 	point_loc = glGetUniformLocation(shader.getProgramIndex(), "pointLights[0].position");
 	point_loc1 = glGetUniformLocation(shader.getProgramIndex(), "pointLights[1].position");
 	point_loc2 = glGetUniformLocation(shader.getProgramIndex(), "pointLights[2].position");
@@ -1371,7 +1496,7 @@ GLuint setupShaders() {
 //
 
 
-void init()
+int init()
 {
 	MyMesh amesh;
 	srand(time(NULL));
@@ -1401,6 +1526,12 @@ void init()
 	Texture2D_Loader(textures, "water_quad.png", 1);
 	Texture2D_Loader(textures, "lightwood.tga", 2);
 
+	std::string filepathSpider = "spider/spider.obj";
+
+	if (!Import3DFromFile(filepathSpider, importerSpider, sceneSpider, scaleFactorSpider)) return 0;
+	// outro import se quisermos outra malha
+	strcpy(model_dir, "spider/");
+	waterCreatureSpider = createMeshFromAssimp(sceneSpider, texturesIds);
 
 	// Initialize the camera position based on the initial cameraOffset
 	cams[activeCamera].camPos[0] = myBoat.position[0] + cameraOffset[0];
@@ -1433,7 +1564,7 @@ void init()
 	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
 	amesh.mat.shininess = shininess;
 	amesh.mat.texCount = texcount;
-	myMeshes.push_back(amesh);
+	waterMesh = amesh;
 	emissive[3] = 1.0f;
 
 	float amb1[] = { 0.3f, 0.0f, 0.0f, 1.0f }; //cor ambiente do cilindro
@@ -1606,6 +1737,7 @@ void init()
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_MULTISAMPLE);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	return 1;
 
 }
 
@@ -1666,7 +1798,9 @@ int main(int argc, char** argv) {
 	if (!setupShaders())
 		return(1);
 
-	init();
+	if (!init()) {
+		printf("Could not load models\n");
+	}
 
 	//  GLUT main loop
 	glutMainLoop();
