@@ -162,6 +162,7 @@ bool pointLightsOn = true;
 bool spotLightsOn = true;
 bool fogOn = true;
 bool paused = false;
+bool gameOver = false;
 
 // Mouse Tracking Variables
 int startX, startY, tracking = 0;
@@ -244,7 +245,7 @@ int checkCollision(float nextBoatCenter[3]) {
 
 
 void updateBoat(int direction) {
-	if (paused) {
+	if (paused || gameOver) {
 		glutTimerFunc(1000 / 60, updateBoat, direction);
 		return;
 	}
@@ -283,7 +284,7 @@ void updateBoat(int direction) {
 	else if (collision == -1) { //colision with piranha, failure, reset boat
 		remainingLives--;
 		if (remainingLives == 0) {
-			exit(0);
+			gameOver = 1;
 		}
 		//piranhaTimer = 0;		//uncomment if you think piranha timers shoulb be reset after collsion
 		//piranhaAngleTimer = 0;
@@ -335,7 +336,7 @@ void updateBoat(int direction) {
 }
 
 void accelerateCreatures(int value) {
-	if (paused) {
+	if (paused || gameOver) {
 		glutTimerFunc(1000/60, accelerateCreatures, 0);
 		return;
 	}
@@ -352,7 +353,7 @@ void accelerateCreatures(int value) {
 }
 
 void incrementTimer(int value) {
-	if (paused) {
+	if (paused || gameOver) {
 		glutTimerFunc(1000, incrementTimer, 0);
 		return;
 	}
@@ -369,7 +370,7 @@ void incrementTimer(int value) {
 }
 
 void changeCreaturesAngle(int value) {
-	if (paused) {
+	if (paused || gameOver) {
 		glutTimerFunc(1000/60, changeCreaturesAngle, 0);
 		return;
 	}
@@ -387,7 +388,7 @@ void changeCreaturesAngle(int value) {
 
 void animateWaterCreatures(int value) {
 
-	if (paused) {
+	if (paused || gameOver) {
 		glutTimerFunc(1000 / 60, animateWaterCreatures, 0);
 		return;
 	}
@@ -998,8 +999,11 @@ void renderScene(void) {
 	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
 	std::string timeString = "Time: " + std::to_string(timeMinutes) + ":" + std::to_string(timeSeconds);
 	RenderText(shaderText, timeString.c_str(), 50.0f, 50.0f, 1.0f, 0.8f, 0.5f, 0.2f);
-	if (paused) {
+	if (paused && !gameOver) {
 		RenderText(shaderText, "PAUSE!", 440.0f, 570.0f, 0.5f, 0.9, 0.3f, 0.9f);
+	}
+	if (gameOver) {
+		RenderText(shaderText, "GAME OVER! Press R to restart", 440.0f, 570.0f, 0.5f, 0.9, 0.3f, 0.9f);
 	}
 	std::string piranhaString = "Piranha Level: " + std::to_string(piranhaLevel);
 	RenderText(shaderText, piranhaString.c_str(), 800.0f, 600.0f, 1.0f, 0.8f, 0.5f, 0.2f);
@@ -1019,6 +1023,28 @@ void renderScene(void) {
 //
 // Events from the Keyboard
 //
+void restartGame() {
+	myBoat.speed = 0.0f;
+	myBoat.angularSpeed = 0.0f;
+	myBoat.position[0] = 25.0f;
+	myBoat.position[1] = 0.0f;
+	myBoat.position[2] = 0.0f;
+	myBoat.angle = 0.0f;
+	myBoat.direction[0] = 1.0f;
+	myBoat.direction[1] = 0.0f;
+	myBoat.direction[2] = 0.0f;
+	myBoat.center[0] = 25.0f;
+	myBoat.center[1] = 0.5f;
+	myBoat.center[2] = 0.0f;
+	resetWaterCreatures();
+	fogOn = true;
+	dayTime = true;
+	pointLightsOn = true;
+	spotLightsOn = true;
+	piranhaLevel = 1;
+	remainingLives = 5;
+	gameOver = 0;
+}
 
 void processKeys(unsigned char key, int xx, int yy)
 {
@@ -1029,32 +1055,32 @@ void processKeys(unsigned char key, int xx, int yy)
 		break;
 	case 'm': glEnable(GL_MULTISAMPLE); break;
 	case '1':
-		if (paused) {
+		if (paused || gameOver) {
 			break;
 		}
 		activeCamera = 0;
 		break;
 	case '2':
-		if (paused) {
+		if (paused || gameOver) {
 			break;
 		}
 		activeCamera = 1;
 		break;
 	case '3':
-		if (paused) {
+		if (paused || gameOver) {
 			break;
 		}
 		activeCamera = 2;
 		break;
 	case 'a':
-		if (paused) {
+		if (paused || gameOver) {
 			break;
 		}
 		//mexer cubo segundo um angulo e velocidade para a esquerda
 		paddlemoving[1] = true;
 		break;
 	case 'd':
-		if (paused) {
+		if (paused || gameOver) {
 			break;
 		}
 		//mexer cubo segundo um angulo e velocidade para a direita
@@ -1062,7 +1088,7 @@ void processKeys(unsigned char key, int xx, int yy)
 		break;
 	case 's':
 		//toggle inverter direção frente/trás
-		if (paused) {
+		if (paused || gameOver) {
 			break;
 		}
 		if (canChangeDirection) {
@@ -1071,7 +1097,7 @@ void processKeys(unsigned char key, int xx, int yy)
 		break;
 	case 'o':
 		//duplica a força atual das remadas
-		if (paused) {
+		if (paused || gameOver) {
 			break;
 		}
 		forceMultiplier = forceMultiplier * 2.0f;
@@ -1085,29 +1111,40 @@ void processKeys(unsigned char key, int xx, int yy)
 		break;
 	case 'c':
 		//toggle on/off the point lights
-		if (paused) {
+		if (paused || gameOver) {
 			break;
 		}
 		pointLightsOn = !pointLightsOn;
 		break;
 	case 'h':
 		//toggle on/off the spot lights
-		if (paused) {
+		if (paused || gameOver) {
 			break;
 		}
 		spotLightsOn = !spotLightsOn;
 		break;
 	case 'f':
 		//toggle on/off fog
-		if (paused) {
+		if (paused || gameOver) {
 			break;
 		}
 		fogOn = !fogOn;
 		break;
 
 	case 'p':
+		if (gameOver) {
+			break;
+		}
 		//pause the game
 		paused = !paused;
+		break;
+
+	case 'r':
+		if (gameOver) {
+			paused = false;
+		
+		}
+		restartGame();
 		break;
 	}
 	
@@ -1133,7 +1170,7 @@ void processKeysUp(unsigned char key, int xx, int yy)
 
 void processMouseButtons(int button, int state, int xx, int yy)
 {	
-	if (paused) {
+	if (paused || gameOver) {
 		return;
 	}
 	// start tracking the mouse
@@ -1165,7 +1202,7 @@ void processMouseButtons(int button, int state, int xx, int yy)
 
 void processMouseMotion(int xx, int yy)
 {
-	if (paused) {
+	if (paused || gameOver) {
 		return;
 	}
 	int deltaX, deltaY;
