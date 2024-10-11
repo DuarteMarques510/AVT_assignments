@@ -13,6 +13,7 @@
 
 #include <math.h>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <string>
 
@@ -132,13 +133,15 @@ float floatPositions[6][3] = {
 
 float floatRadius = 0.5f;
 
-float waterCreaturesPositions[6][3];
+const int numberOfCreatures = 20;
 
-float waterCreaturesRotationAngles[6];
+float waterCreaturesPositions[numberOfCreatures][3];
 
-float waterCreaturesAngles[6];
+float waterCreaturesRotationAngles[numberOfCreatures];
 
-float waterCreaturesSpeeds[6];
+float waterCreaturesAngles[numberOfCreatures];
+
+float waterCreaturesSpeeds[numberOfCreatures];
 
 float waterCreaturesRadius = 0.875f; //metade da altura estipulada para os cilindros que estão a ser usados para representar as piranhas
 
@@ -201,7 +204,7 @@ int remainingLives = 5;
 
 void resetWaterCreatures() { //reset the water creatures positions and speeds after colision with one of them
 	piranhaLevel = 1;
-	for (uint16_t i = 0; i < 6; i++) {
+	for (uint16_t i = 0; i < numberOfCreatures; i++) {
 		float random = 0.3 + ((float)rand() / RAND_MAX) * (0.7 - 0.5);
 		waterCreaturesSpeeds[i] = random / 4;
 		random = 1 + ((float)rand() / RAND_MAX) * (360 - 1);
@@ -227,6 +230,8 @@ int checkCollision(float nextBoatCenter[3]) {
 		if (distanceFromBoatToObject(floatPositions[i], nextBoatCenter) < myBoat.radius + floatRadius) {
 			return 1; //code for collision with float
 		}
+	}
+	for (uint16_t i = 0; i < numberOfCreatures; i++) {
 		if (distanceFromBoatToObject(waterCreaturesPositions[i], nextBoatCenter) < myBoat.radius + waterCreaturesRadius) {
 			return -1; //code for collision with water creature, code for failure
 		}
@@ -244,9 +249,9 @@ int checkCollision(float nextBoatCenter[3]) {
 }
 
 
-void updateBoat(int direction) {
+void updateBoat(int value) {
 	if (paused || gameOver) {
-		glutTimerFunc(1000 / 60, updateBoat, direction);
+		glutTimerFunc(1000 / 60, updateBoat, 0);
 		return;
 	}
 
@@ -332,16 +337,16 @@ void updateBoat(int direction) {
 	}
 
 	glutPostRedisplay();
-	glutTimerFunc(1000/60, updateBoat, direction);
+	glutTimerFunc(1000 / 60, updateBoat, 0);
 }
 
 void accelerateCreatures(int value) {
 	if (paused || gameOver) {
-		glutTimerFunc(1000/60, accelerateCreatures, 0);
+		glutTimerFunc(1000 / 60, accelerateCreatures, 0);
 		return;
 	}
 	if (piranhaTimer == 30) {
-		for (uint16_t i = 0; i < 6; i++) {
+		for (uint16_t i = 0; i < numberOfCreatures; i++) {
 			waterCreaturesSpeeds[i] = waterCreaturesSpeeds[i] * 2;
 		}
 		piranhaLevel++;
@@ -349,7 +354,7 @@ void accelerateCreatures(int value) {
 
 	}
 	glutPostRedisplay();
-	glutTimerFunc(1000/60, accelerateCreatures, 0);
+	glutTimerFunc(1000 / 60, accelerateCreatures, 0);
 }
 
 void incrementTimer(int value) {
@@ -360,7 +365,7 @@ void incrementTimer(int value) {
 	timeSeconds++;
 	piranhaTimer++;
 	piranhaAngleTimer++;
-	
+
 	if (timeSeconds == 60) {
 		timeMinutes++;
 		timeSeconds = 0;
@@ -371,19 +376,19 @@ void incrementTimer(int value) {
 
 void changeCreaturesAngle(int value) {
 	if (paused || gameOver) {
-		glutTimerFunc(1000/60, changeCreaturesAngle, 0);
+		glutTimerFunc(1000 / 60, changeCreaturesAngle, 0);
 		return;
 	}
 	if (piranhaAngleTimer == 5) {
 		piranhaAngleTimer = 0;
-		for (uint16_t i = 0; i < 6; i++) {
+		for (uint16_t i = 0; i < numberOfCreatures; i++) {
 			float angle = float((rand() % 181) + (waterCreaturesAngles[i] - 90));
 			waterCreaturesAngles[i] = angle;
 		}
 	}
-	
+
 	glutPostRedisplay();
-	glutTimerFunc(1000/60, changeCreaturesAngle, 0);
+	glutTimerFunc(1000 / 60, changeCreaturesAngle, 0);
 }
 
 void animateWaterCreatures(int value) {
@@ -392,7 +397,7 @@ void animateWaterCreatures(int value) {
 		glutTimerFunc(1000 / 60, animateWaterCreatures, 0);
 		return;
 	}
-	for (uint16_t i = 0; i < 6; i++) {
+	for (uint16_t i = 0; i < numberOfCreatures; i++) {
 		waterCreaturesRotationAngles[i] += 2.0f;
 		if (waterCreaturesRotationAngles[i] >= 360.0f) {
 			waterCreaturesRotationAngles[i] = 0.0f;
@@ -625,7 +630,7 @@ void renderPlain(void) {
 }
 void renderRedCylinders(void) {
 	GLint loc;
-	for (uint16_t i = 1; i < 7; i++) {
+	for (uint16_t i = 1; i < numberOfCreatures + 1; i++) {
 		pushMatrix(MODEL);
 		{
 			translate(MODEL, waterCreaturesPositions[i - 1][0], waterCreaturesPositions[i - 1][1] - 0.4f, waterCreaturesPositions[i - 1][2]);
@@ -924,7 +929,7 @@ void renderScene(void) {
 
 	// use our shader
 
-	glUseProgram(shader.getProgramIndex()); 
+	glUseProgram(shader.getProgramIndex());
 
 	float res[4];
 
@@ -997,8 +1002,9 @@ void renderScene(void) {
 	pushMatrix(VIEW);
 	loadIdentity(VIEW);
 	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
-	std::string timeString = "Time: " + std::to_string(timeMinutes) + ":" + std::to_string(timeSeconds);
-	RenderText(shaderText, timeString.c_str(), 50.0f, 50.0f, 1.0f, 0.8f, 0.5f, 0.2f);
+	std::ostringstream timeString;
+	timeString << "Time: " << timeMinutes << ":" << std::setw(2) << std::setfill('0') << timeSeconds;
+	RenderText(shaderText, timeString.str(), 50.0f, 50.0f, 1.0f, 0.8f, 0.5f, 0.2f);
 	if (paused && !gameOver) {
 		RenderText(shaderText, "PAUSE!", 440.0f, 570.0f, 0.5f, 0.9, 0.3f, 0.9f);
 	}
@@ -1043,6 +1049,8 @@ void restartGame() {
 	spotLightsOn = true;
 	piranhaLevel = 1;
 	remainingLives = 5;
+	timeMinutes = 0;
+	timeSeconds = 0;
 	gameOver = 0;
 }
 
@@ -1140,14 +1148,11 @@ void processKeys(unsigned char key, int xx, int yy)
 		break;
 
 	case 'r':
-		if (gameOver) {
-			paused = false;
-		
-		}
+		paused = false;
 		restartGame();
 		break;
 	}
-	
+
 }
 
 void processKeysUp(unsigned char key, int xx, int yy)
@@ -1169,7 +1174,7 @@ void processKeysUp(unsigned char key, int xx, int yy)
 //
 
 void processMouseButtons(int button, int state, int xx, int yy)
-{	
+{
 	if (paused || gameOver) {
 		return;
 	}
@@ -1500,7 +1505,7 @@ void init()
 
 
 	// create geometry and VAO of 6 cylinders that will be in the water
-	for (uint16_t i = 0; i < 6; i++) {
+	for (uint16_t i = 0; i < numberOfCreatures; i++) {
 		amesh = createCylinder(1.5f, 0.5f, 30);
 		memcpy(amesh.mat.ambient, amb1, 4 * sizeof(float));
 		memcpy(amesh.mat.diffuse, diff1, 4 * sizeof(float));
@@ -1632,7 +1637,7 @@ int main(int argc, char** argv) {
 
 	glutTimerFunc(0, timer, 0);
 	glutTimerFunc(0, refresh, 0);    //use it to to get 60 FPS whatever
-	glutTimerFunc(0, updateBoat, direction);
+	glutTimerFunc(0, updateBoat, 0);
 	glutTimerFunc(0, accelerateCreatures, 0);
 	glutTimerFunc(0, changeCreaturesAngle, 0);
 	glutTimerFunc(0, animateWaterCreatures, 0);
