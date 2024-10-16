@@ -573,6 +573,9 @@ void aiRecursive_render(const aiNode* nd, vector<struct MyMesh>& myMeshes, GLuin
 	for (unsigned int n = 0; n < nd->mNumChildren; ++n) {
 		aiRecursive_render(nd->mChildren[n], myMeshes, textureIds);
 	}
+	glUniform1i(diffMapCount_loc, 0);
+	glUniform1i(normalMap_loc, false);
+	glUniform1i(specularMap_loc, false);
 	popMatrix(MODEL);
 }
 
@@ -745,7 +748,7 @@ void renderRedCylinders(void) {
 	for (uint16_t i = 0; i < numberOfCreatures ; i++) {
 		pushMatrix(MODEL);
 		{
-			translate(MODEL, waterCreaturesPositions[i][0], waterCreaturesPositions[i][1], waterCreaturesPositions[i][2]);
+			translate(MODEL, waterCreaturesPositions[i][0], waterCreaturesPositions[i][1]+1, waterCreaturesPositions[i][2]);
 
 			//comment lines below without comment to swap red cylinders for spiders and and uncomment the ones that had comments before to swap back
 
@@ -775,6 +778,7 @@ void renderRedCylinders(void) {
 			//glDrawElements(myMeshes[i].type, myMeshes[i].numIndexes, GL_UNSIGNED_INT, 0);
 			//glBindVertexArray(0);
 			aiRecursive_render(sceneSpider->mRootNode, waterCreatureSpider, texturesIds);
+			glUniform1i(diffMapCount_loc, 0);
 		}
 		popMatrix(MODEL);
 	}
@@ -1098,7 +1102,6 @@ void renderScene(void) {
 		glUniform1f(spot_angle_loc, spotLights[0].angle);
 		glUniform1f(spot_angle_loc1, spotLights[1].angle);
 	}
-
 
 
 
@@ -1520,17 +1523,17 @@ int init()
 
 	/// Initialization of freetype library with font_name file
 	freeType_init(font_name);
-	std::string filepathSpider = "spider/spider.obj";
-	if (!Import3DFromFile(filepathSpider, importerSpider, sceneSpider, scaleFactorSpider)) return 0;
-	// outro import se quisermos outra malha
-	strcpy(model_dir, "spider/");
-	waterCreatureSpider = createMeshFromAssimp(sceneSpider, texturesIds);
 
 	glGenTextures(3, textures);
 	Texture2D_Loader(textures, "stone.tga", 0);
 	Texture2D_Loader(textures, "water_quad.png", 1);
 	Texture2D_Loader(textures, "lightwood.tga", 2);
 
+	std::string filepathSpider = "spider/spider.obj";
+	if (!Import3DFromFile(filepathSpider, importerSpider, sceneSpider, scaleFactorSpider)) return 0;
+	// outro import se quisermos outra malha
+	strcpy(model_dir, "spider/");
+	waterCreatureSpider = createMeshFromAssimp(sceneSpider, texturesIds);
 	
 
 

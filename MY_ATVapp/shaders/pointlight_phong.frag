@@ -6,6 +6,11 @@ uniform sampler2D texmap2;
 
 out vec4 colorOut;
 
+uniform sampler2D texUnitDiff;
+uniform sampler2D texUnitDiff1; //supports two diffuse textures
+uniform sampler2D texUnitSpec;
+uniform sampler2D texUnitNormalMap;
+
 uniform int texMode;
 
 struct Materials {
@@ -40,10 +45,15 @@ uniform bool dayTime;
 uniform bool pointLightsOn;
 uniform bool spotLightsOn;
 uniform bool fogOn;
+uniform bool normalMap;
+uniform bool specularMap;
+uniform uint diffMapCount;
 
 uniform vec3 fogColor = vec3(0.5, 0.6, 0.7);  // Color of the fog
 uniform float fogDensity = 0.03;               // Fog density to control thickness
 uniform int depthFog; 
+
+vec4 diff, auxSpec;
 
 in Data {
 	vec3 normal;
@@ -58,25 +68,52 @@ void main() {
 
 	vec4 spec = vec4(0.0);
 	vec4 color = mat.ambient;
+	vec3 n;
 
 	vec4 texel;
 	vec4 texel1;
 
-	vec3 n = normalize(DataIn.normal);
+	if (normalMap) {
+		n= normalize(2.0*texture(texUnitNormalMap, DataIn.tex_coord).rgb - 1.0);
+	}
+	else{
+		n= normalize(DataIn.normal);
+	}
+
 	vec3 l = normalize(vec3(dirLight.direction));
 	vec3 e = normalize(DataIn.eye);
 	float intensity = max(dot(n,l), 0.0);
 
-	if (dayTime){
+	if(mat.texCount==0){
+		diff =mat.diffuse;
+		auxSpec= mat.specular;
+	}
+	else{
+		if(diffMapCount==0){
+			diff=mat.diffuse;
+		}
+		else if(diffMapCount==1){
+			diff=mat.diffuse*texture(texUnitDiff, DataIn.tex_coord);
+		}
+		else{
+			diff=mat.diffuse*texture(texUnitDiff, DataIn.tex_coord)*texture(texUnitDiff1, DataIn.tex_coord);
+		}
+		if (specularMap){
+			auxSpec=mat.specular*texture(texUnitSpec, DataIn.tex_coord);
+		}
+		else{
+			auxSpec=mat.specular;
+		}
+	}
 
-	
+	if (dayTime){
 		if (intensity > 0.0) {
 			vec3 h = normalize(l + e);
 			float intSpec = max(dot(h,n), 0.0);
-			spec = mat.specular * pow(intSpec, mat.shininess);
+			spec = auxSpec * pow(intSpec, mat.shininess);
 		}
 	
-		color += intensity * mat.diffuse + spec;
+		color += intensity * diff + spec;
 	}
 
 	//point lights
@@ -86,9 +123,9 @@ void main() {
 			if (intensity > 0.0) {
 				vec3 h = normalize(l + e);
 				float intSpec = max(dot(h,n), 0.0);
-				spec = mat.specular * pow(intSpec, mat.shininess);
+				spec = auxSpec * pow(intSpec, mat.shininess);
 			}
-			color += vec4(0.2, 0.2, 0.2, 1.0)*intensity * mat.diffuse + spec;
+			color += vec4(0.2, 0.2, 0.2, 1.0)*intensity * diff + spec;
 		}
 	}
 
@@ -100,9 +137,9 @@ void main() {
 				if (intensity > 0.0) {
 					vec3 h = normalize(l + e);
 					float intSpec = max(dot(h,n), 0.0);
-					spec = mat.specular * pow(intSpec, mat.shininess);
+					spec = auxSpec * pow(intSpec, mat.shininess);
 				}
-				color += intensity * mat.diffuse + spec;
+				color += intensity * diff + spec;
 			}
 		}
 	}
@@ -120,10 +157,10 @@ void main() {
 		fogAmount = clamp(fogAmount, 0.0, 1.0);    // Ensure it's between 0 and 1
 		vec3 finalColor = mix(fogColor, vec3(color), fogAmount);
 		finalColor = max(finalColor, vec3(mat.ambient));
-		colorOut = vec4(finalColor, mat.diffuse.a); // Output the final color with alpha
+		colorOut = vec4(finalColor, diff.a); // Output the final color with alpha
 	}
 	else {
-		colorOut = vec4(max(color, mat.ambient).rgb, mat.diffuse.a);
+		colorOut = vec4(max(color, mat.ambient).rgb, diff.a);
 	}
 
 	if (texMode==1){
