@@ -524,7 +524,7 @@ void aiRecursive_render(const aiNode* nd, vector<struct MyMesh>& myMeshes, GLuin
 
 				//Activate a TU with a Texture Object
 				GLuint TU = myMeshes[nd->mMeshes[n]].texUnits[i];
-				glActiveTexture(GL_TEXTURE0 + TU);
+				glActiveTexture(GL_TEXTURE3 + TU);
 				glBindTexture(GL_TEXTURE_2D, textureIds[TU]);
 
 				if (myMeshes[nd->mMeshes[n]].texTypes[i] == DIFFUSE) {
@@ -1520,18 +1520,19 @@ int init()
 
 	/// Initialization of freetype library with font_name file
 	freeType_init(font_name);
+	std::string filepathSpider = "spider/spider.obj";
+	if (!Import3DFromFile(filepathSpider, importerSpider, sceneSpider, scaleFactorSpider)) return 0;
+	// outro import se quisermos outra malha
+	strcpy(model_dir, "spider/");
+	waterCreatureSpider = createMeshFromAssimp(sceneSpider, texturesIds);
 
 	glGenTextures(3, textures);
 	Texture2D_Loader(textures, "stone.tga", 0);
 	Texture2D_Loader(textures, "water_quad.png", 1);
 	Texture2D_Loader(textures, "lightwood.tga", 2);
 
-	std::string filepathSpider = "spider/spider.obj";
+	
 
-	if (!Import3DFromFile(filepathSpider, importerSpider, sceneSpider, scaleFactorSpider)) return 0;
-	// outro import se quisermos outra malha
-	strcpy(model_dir, "spider/");
-	waterCreatureSpider = createMeshFromAssimp(sceneSpider, texturesIds);
 
 	// Initialize the camera position based on the initial cameraOffset
 	cams[activeCamera].camPos[0] = myBoat.position[0] + cameraOffset[0];
