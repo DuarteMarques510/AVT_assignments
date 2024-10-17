@@ -79,6 +79,7 @@ void main() {
 	else{
 		n= normalize(DataIn.normal);
 	}
+	n=normalize(DataIn.normal);
 
 	vec3 l = normalize(vec3(dirLight.direction));
 	vec3 e = normalize(DataIn.eye);
@@ -139,7 +140,7 @@ void main() {
 					float intSpec = max(dot(h,n), 0.0);
 					spec = auxSpec * pow(intSpec, mat.shininess);
 				}
-				color += intensity * diff + spec;
+				color += vec4(0.5, 0.5, 0.5, 1.0)* intensity * diff + spec;
 			}
 		}
 	}

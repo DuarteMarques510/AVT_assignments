@@ -62,7 +62,7 @@ char model_dir[50];
 VSShaderLib shader;  //geometry
 VSShaderLib shaderText;  //render bitmap text
 
-bool normalMapKey = true;
+bool normalMapKey =true;
 
 //File with the font
 const string font_name = "fonts/arial.ttf";
@@ -470,6 +470,19 @@ void changeSize(int w, int h) {
 	// set the projection matrix
 	ratio = (1.0f * w) / h;
 	loadIdentity(PROJECTION);
+	/*if (w <= h) {
+		ortho(-2.0, 2.0, -2.0 * (GLfloat)h / (GLfloat)w,
+			2.0 * (GLfloat)h / (GLfloat)w, -10, 10);
+	}
+	else {
+		ortho(-2.0 * (GLfloat)w / (GLfloat)h,
+			2.0 * (GLfloat)w / (GLfloat)h, -2.0, 2.0, -10, 10);
+	}*/
+
+	
+
+
+
 	if (cams[activeCamera].type == 0) {
 		//perspective camera
 		perspective(53.13f, ratio, 0.1f, 1000.0f);
@@ -524,7 +537,7 @@ void aiRecursive_render(const aiNode* nd, vector<struct MyMesh>& myMeshes, GLuin
 
 				//Activate a TU with a Texture Object
 				GLuint TU = myMeshes[nd->mMeshes[n]].texUnits[i];
-				glActiveTexture(GL_TEXTURE3 + TU);
+				glActiveTexture(GL_TEXTURE4 + TU);
 				glBindTexture(GL_TEXTURE_2D, textureIds[TU]);
 
 				if (myMeshes[nd->mMeshes[n]].texTypes[i] == DIFFUSE) {
@@ -573,9 +586,6 @@ void aiRecursive_render(const aiNode* nd, vector<struct MyMesh>& myMeshes, GLuin
 	for (unsigned int n = 0; n < nd->mNumChildren; ++n) {
 		aiRecursive_render(nd->mChildren[n], myMeshes, textureIds);
 	}
-	glUniform1i(diffMapCount_loc, 0);
-	glUniform1i(normalMap_loc, false);
-	glUniform1i(specularMap_loc, false);
 	popMatrix(MODEL);
 }
 
@@ -595,6 +605,8 @@ void renderBoat(void) {
 		glUniform4fv(loc, 1, boatMeshes[0].mat.specular);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 		glUniform1f(loc, boatMeshes[0].mat.shininess);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, boatMeshes[0].mat.texCount);
 
 		//compute and send the matrices to the shader
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -621,6 +633,8 @@ void renderBoat(void) {
 			glUniform4fv(loc, 1, boatMeshes[1].mat.specular);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 			glUniform1f(loc, boatMeshes[1].mat.shininess);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+			glUniform1i(loc, boatMeshes[1].mat.texCount);
 
 			//compute and send the matrices to the shader
 			computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -664,6 +678,8 @@ void renderBoat(void) {
 				glUniform4fv(loc, 1, boatMeshes[2 + i].mat.specular);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 				glUniform1f(loc, boatMeshes[2 + i].mat.shininess);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+				glUniform1i(loc, boatMeshes[2+i].mat.texCount);
 
 				//compute and send the matrices to the shader
 				computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -690,6 +706,8 @@ void renderBoat(void) {
 					glUniform4fv(loc, 1, boatMeshes[4 + i].mat.specular);
 					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 					glUniform1f(loc, boatMeshes[4 + i].mat.shininess);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+					glUniform1i(loc, boatMeshes[4+i].mat.texCount);
 
 					//compute and send the matrices to the shader
 					computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -726,6 +744,8 @@ void renderPlain(void) {
 		glUniform4fv(loc, 1, waterMesh.mat.specular);
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 		glUniform1f(loc, waterMesh.mat.shininess);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, waterMesh.mat.texCount);
 
 		//compute and send the matrices to the shader
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -748,7 +768,7 @@ void renderRedCylinders(void) {
 	for (uint16_t i = 0; i < numberOfCreatures ; i++) {
 		pushMatrix(MODEL);
 		{
-			translate(MODEL, waterCreaturesPositions[i][0], waterCreaturesPositions[i][1]+1, waterCreaturesPositions[i][2]);
+			translate(MODEL, waterCreaturesPositions[i][0], waterCreaturesPositions[i][1], waterCreaturesPositions[i][2]);
 
 			//comment lines below without comment to swap red cylinders for spiders and and uncomment the ones that had comments before to swap back
 
@@ -798,6 +818,8 @@ void renderFloats() {
 			glUniform4fv(loc, 1, floats[i].mat.specular);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 			glUniform1f(loc, floats[i].mat.shininess);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+			glUniform1i(loc, floats[i].mat.texCount);
 
 			//compute and send the matrices to the shader
 			computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -821,6 +843,8 @@ void renderFloats() {
 				glUniform4fv(loc, 1, floatCylinders[i].mat.specular);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 				glUniform1f(loc, floatCylinders[i].mat.shininess);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+				glUniform1i(loc, floatCylinders[i].mat.texCount);
 
 				//compute and send the matrices to the shader
 				computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -855,6 +879,8 @@ void renderIslandsAndTrees() {
 			glUniform4fv(loc, 1, islands[i].mat.specular);
 			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 			glUniform1f(loc, islands[i].mat.shininess);
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+			glUniform1i(loc, islands[i].mat.texCount);
 
 			//compute and send the matrices to the shader
 			computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -879,6 +905,8 @@ void renderIslandsAndTrees() {
 				glUniform4fv(loc, 1, islandTrees[i].mat.specular);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 				glUniform1f(loc, islandTrees[i].mat.shininess);
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+				glUniform1i(loc, islandTrees[i].mat.texCount);
 
 				//compute and send the matrices to the shader
 				computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -903,6 +931,8 @@ void renderIslandsAndTrees() {
 					glUniform4fv(loc, 1, islandLeaves[i].mat.specular);
 					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 					glUniform1f(loc, islandLeaves[i].mat.shininess);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+					glUniform1i(loc, islandLeaves[i].mat.texCount);
 
 					//compute and send the matrices to the shader
 					computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -939,6 +969,8 @@ void renderIslandsAndTrees() {
 						glUniform4fv(loc, 1, islandHouseBodies[i].mat.specular);
 						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 						glUniform1f(loc, islandHouseBodies[i].mat.shininess);
+						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+						glUniform1i(loc, islandHouseBodies[i].mat.texCount);
 
 						computeDerivedMatrix(PROJ_VIEW_MODEL);
 						glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
@@ -960,6 +992,8 @@ void renderIslandsAndTrees() {
 						glUniform4fv(loc, 1, islandHouseRoofs[i].mat.specular);
 						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
 						glUniform1f(loc, islandHouseRoofs[i].mat.shininess);
+						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+						glUniform1i(loc, islandHouseRoofs[i].mat.texCount);
 
 						computeDerivedMatrix(PROJ_VIEW_MODEL);
 						glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
@@ -1021,7 +1055,7 @@ void renderScene(void) {
 	glGetIntegerv(GL_VIEWPORT, m_viewport);
 
 	FrameCount++;
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	// load identity matrices
 	loadIdentity(VIEW);
 	loadIdentity(MODEL);
@@ -1505,6 +1539,7 @@ int init()
 	srand(time(NULL));
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
+
 	cams[1].camPos[0] = 0.01f;
 	cams[1].camPos[1] = 50.0f;
 	cams[1].camPos[2] = 0.0f;
@@ -1741,6 +1776,10 @@ int init()
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_MULTISAMPLE);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	
+	
+	glClearStencil(0x0);
+	glEnable(GL_STENCIL_TEST);
 	return 1;
 
 }
