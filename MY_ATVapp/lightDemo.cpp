@@ -38,6 +38,7 @@
 #include "Texture_Loader.h"
 #include "avtFreeType.h"
 #include "meshFromAssimp.h"
+#include "l3DBillboard.h"
 
 using namespace std;
 
@@ -85,6 +86,7 @@ vector<struct MyMesh> islandHouseRoofs;
 vector<struct MyMesh> auxMeshes;
 vector<struct MyMesh> waterCreatureSpider;
 struct MyMesh particlesMesh;
+struct MyMesh treeMesh;
 //External array storage defined in AVTmathLib.cpp
 
 /// The storage for matrices
@@ -98,7 +100,7 @@ GLint pvm_uniformId;
 GLint vm_uniformId;
 GLint normal_uniformId;
 GLint lPos_uniformId;
-GLint tex_loc, tex_loc1, tex_loc2;
+GLint tex_loc, tex_loc1, tex_loc2, tex_loc3, tex_loc4;
 GLint texMode_uniformId;
 GLint point_loc, point_loc1, point_loc2, point_loc3, point_loc4, point_loc5;
 GLint spot_loc, spot_loc1;
@@ -107,7 +109,7 @@ GLint spot_dir_loc, spot_dir_loc1;
 GLint direc_loc;
 GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc, fogOnOff_loc;
 GLint normalMap_loc, specularMap_loc, diffMapCount_loc;
-GLuint textures[4];
+GLuint textures[5];
 GLuint* texturesIds;
 //outro GLuint* se quisermos carregar outra textura para outra malha
 
@@ -139,6 +141,7 @@ typedef struct {
 
 Particle particulas[MAX_PARTICULES];
 int deadParticles = 0;
+int type = 0;
 int fireworks = 0;
 
 
@@ -276,8 +279,8 @@ void iniParticles(void)
 		phi = frand() * M_PI;
 		theta = 2.0 * frand() * M_PI;
 
-		particulas[i].x = 0.0f;
-		particulas[i].y = 10.0f;
+		particulas[i].x = -47.0f;
+		particulas[i].y = 5.0f;
 		particulas[i].z = 0.0f;
 		particulas[i].vx = v * cos(theta) * sin(phi);
 		particulas[i].vy = v * cos(phi);
@@ -292,7 +295,7 @@ void iniParticles(void)
 		particulas[i].b = 0.211f;
 
 		particulas[i].life = 1.0f;		/* vida inicial */
-		particulas[i].fade = 0.0025f;	    /* step de decréscimo da vida para cada iteração */
+		particulas[i].fade = 0.0050f;	    /* step de decréscimo da vida para cada iteração */
 	}
 }
 
@@ -339,7 +342,7 @@ int checkCollision(float nextBoatCenter[3]) {
 		return 1; //out of bounds 
 
 	}
-	if (nextBoatCenter[0] == -47.0f) {
+	if (nextBoatCenter[0] <= -46.0f && nextBoatCenter[0] >=-47.5f) {
 		return 3; //collision with finishing line, display firework.
 	}
 	return 0; //no collision
@@ -405,6 +408,10 @@ void updateBoat(int value) {
 		resetWaterCreatures();
 		//exit(0);
 	}//if the colision code is not 0 or -1, its a collsion that makes the position update not happen
+	else if (collision==3 && fireworks==0) {
+		fireworks = 1;
+		iniParticles();
+	}
 
 	myBoat.speed -= speedDecay;
 	if (myBoat.speed < 0.0f) {
@@ -612,7 +619,7 @@ void aiRecursive_render(const aiNode* nd, vector<struct MyMesh>& myMeshes, GLuin
 
 				//Activate a TU with a Texture Object
 				GLuint TU = myMeshes[nd->mMeshes[n]].texUnits[i];
-				glActiveTexture(GL_TEXTURE4 + TU);
+				glActiveTexture(GL_TEXTURE5 + TU);
 				glBindTexture(GL_TEXTURE_2D, textureIds[TU]);
 
 				if (myMeshes[nd->mMeshes[n]].texTypes[i] == DIFFUSE) {
@@ -942,6 +949,8 @@ void renderFloats() {
 
 void renderIslandsAndTrees() {
 	GLint loc;
+	float cam[3] = { cams[0].camPos[0], cams[0].camPos[1], cams[0].camPos[2] };
+	float pos[3];
 	for (uint16_t i = 0; i < islands.size(); i++) {
 		pushMatrix(MODEL);
 		{
@@ -968,7 +977,7 @@ void renderIslandsAndTrees() {
 			glBindVertexArray(islands[i].vao);
 			glDrawElements(islands[i].type, islands[i].numIndexes, GL_UNSIGNED_INT, 0);
 			glBindVertexArray(0);
-
+			//Render trees on each island
 			pushMatrix(MODEL);
 			{
 				translate(MODEL, 0.0f, 20.0f, 0.0f);
@@ -994,7 +1003,7 @@ void renderIslandsAndTrees() {
 				glBindVertexArray(islandTrees[i].vao);
 				glDrawElements(islandTrees[i].type, islandTrees[i].numIndexes, GL_UNSIGNED_INT, 0);
 				glBindVertexArray(0);
-
+				//render the leaves of the trees
 				pushMatrix(MODEL);
 				{
 					translate(MODEL, 0.0f, 1.0f, 0.0f);
@@ -1022,6 +1031,53 @@ void renderIslandsAndTrees() {
 					glBindVertexArray(0);
 				}
 				popMatrix(MODEL);
+			// end of render of basic trees
+			
+
+
+			//begin of billboarding trees
+
+			//glUniform1i(texMode_uniformId, 3);
+			//pushMatrix(MODEL);
+			//{
+			//	translate(MODEL, 0.0f, 20.0f, 0.0f);
+			//	pos[0] = 0.0; pos[1] = 3.0; pos[2] = 0.0;
+			//	if(type==2)
+			//		l3dBillboardSphericalBegin(cam, pos);
+			//	else if(type==3)
+			//		l3dBillboardCylindricalBegin(cam, pos);
+
+			//	loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+			//	glUniform4fv(loc, 1, treeMesh.mat.specular);
+			//	loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+			//	glUniform1f(loc, treeMesh.mat.shininess);
+
+			//	pushMatrix(MODEL);
+			//	translate(MODEL, 0.0, 3.0, 0.0f);
+
+			//	// send matrices to OGL
+			//	if (type == 0 || type == 1) {     //Cheating matrix reset billboard techniques
+			//		computeDerivedMatrix(VIEW_MODEL);
+
+			//		//reset VIEW_MODEL
+			//		if (type == 0) BillboardCheatSphericalBegin();
+			//		else BillboardCheatCylindricalBegin();
+
+			//		computeDerivedMatrix_PVM(); // calculate PROJ_VIEW_MODEL
+			//	}
+			//	else computeDerivedMatrix(PROJ_VIEW_MODEL);
+			//	glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			//	glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			//	computeNormalMatrix3x3();
+			//	glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+			//	glBindVertexArray(treeMesh.vao);
+			//	glDrawElements(treeMesh.type, treeMesh.numIndexes, GL_UNSIGNED_INT, 0);
+			//	popMatrix(MODEL);
+			//}
+			//popMatrix(MODEL);
+			//glUniform1i(texMode_uniformId, 0);
+			//end of billboarding trees
+	
 				// Render two houses on each island
 				for (uint16_t j = 0; j < 2; j++) {
 					pushMatrix(MODEL);
@@ -1082,8 +1138,7 @@ void renderIslandsAndTrees() {
 					}
 					popMatrix(MODEL);
 				}
-
-			}
+			} // if you comment pushMatrix on line 982, you should comment this popMatrix below
 			popMatrix(MODEL);
 		}
 		popMatrix(MODEL);
@@ -1096,7 +1151,7 @@ void renderFinishingLine() {
 	GLint loc;
 	pushMatrix(MODEL);
 	{
-		translate(MODEL, -47.0f, -0.25f, -50.0f);
+		translate(MODEL, -46.0f, -0.25f, -50.0f);
 		scale(MODEL, 0.2f, 0.5f, 100.f);
 
 		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
@@ -1208,10 +1263,14 @@ void renderScene(void) {
 	glBindTexture(GL_TEXTURE_2D, textures[2]);
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, textures[3]);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, textures[4]);
 
 	glUniform1i(tex_loc, 0);
 	glUniform1i(tex_loc1, 1);
 	glUniform1i(tex_loc2, 2);
+	glUniform1i(tex_loc3, 3);
+	glUniform1i(tex_loc4, 4);
 
 	glUniform1i(directOnOff_loc, dayTime); //send boolean variables to shader
 	glUniform1i(pointOnOff_loc, pointLightsOn);
@@ -1293,6 +1352,7 @@ void renderScene(void) {
 
 				pushMatrix(MODEL);
 				translate(MODEL, particulas[i].x, particulas[i].y, particulas[i].z);
+				rotate(MODEL, 45.0f, 0.0f, 1.0f, 0.0f);
 
 				// send matrices to OGL
 				computeDerivedMatrix(PROJ_VIEW_MODEL);
@@ -1307,6 +1367,7 @@ void renderScene(void) {
 			}
 			else deadParticles++;
 		}
+		glUniform1i(texMode_uniformId, 0); 
 
 		glDepthMask(GL_TRUE); //make depth buffer again writeable
 
@@ -1673,6 +1734,8 @@ GLuint setupShaders() {
 	tex_loc = glGetUniformLocation(shader.getProgramIndex(), "texmap0");
 	tex_loc1 = glGetUniformLocation(shader.getProgramIndex(), "texmap1");
 	tex_loc2 = glGetUniformLocation(shader.getProgramIndex(), "texmap2");
+	tex_loc3 = glGetUniformLocation(shader.getProgramIndex(), "texmap3");
+	tex_loc4 = glGetUniformLocation(shader.getProgramIndex(), "texmap4");
 	directOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "dayTime");
 	pointOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "pointLightsOn");
 	spotOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLightsOn");
@@ -1727,11 +1790,12 @@ int init()
 	/// Initialization of freetype library with font_name file
 	freeType_init(font_name);
 
-	glGenTextures(3, textures);
+	glGenTextures(5, textures);
 	Texture2D_Loader(textures, "stone.tga", 0);
 	Texture2D_Loader(textures, "water_quad.png", 1);
 	Texture2D_Loader(textures, "lightwood.tga", 2);
 	Texture2D_Loader(textures, "particle.tga", 3);
+	Texture2D_Loader(textures, "tree.tga", 4);
 
 	std::string filepathSpider = "spider/spider.obj";
 	if (!Import3DFromFile(filepathSpider, importerSpider, sceneSpider, scaleFactorSpider)) return 0;
@@ -1795,6 +1859,8 @@ int init()
 	float amb6[] = { 0.3f, 0.0f, 0.0f, 1.0f };  // house roof
 	float diff6[] = { 0.8f, 0.0f, 0.0f, 1.0f };
 	float spec6[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+
+	float treeSpec[] = { 0.2f, 0.2f, 0.2f, 1.0f };
 
 	shininess = 500.0;
 
@@ -1950,9 +2016,17 @@ int init()
 	amesh.mat.texCount = texcount;
 	auxMeshes.push_back(amesh);
 
+	//quad for the fireworks
 	amesh = createQuad(2.0f, 2.0f);
 	amesh.mat.texCount = texcount;
 	particlesMesh = amesh;
+
+	//quad for the trees
+	amesh = createQuad(6, 6);
+	memcpy(amesh.mat.specular, treeSpec,	4 * sizeof(float));
+	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+	amesh.mat.shininess = 10.0f;
+	amesh.mat.texCount = texcount;
 
 
 	// some GL settings

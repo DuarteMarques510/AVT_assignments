@@ -3,6 +3,8 @@
 uniform sampler2D texmap0;
 uniform sampler2D texmap1;
 uniform sampler2D texmap2;
+uniform sampler2D texmap3;
+uniform sampler2D texmap4;
 
 out vec4 colorOut;
 
@@ -168,5 +170,15 @@ void main() {
 		texel = texture(texmap2, DataIn.tex_coord);
 		texel1 = texture(texmap1, DataIn.tex_coord);
 		colorOut = max(colorOut*texel1*texel, texel*texel1*0.07);
+	}
+	else if(texMode==2){ //particle shading
+		texel=texture(texmap3, DataIn.tex_coord);
+		colorOut = max(mat.diffuse*texel, texel*0.07);
+	}
+	else if (texMode==3){
+		texel=texture(texmap4, DataIn.tex_coord);
+		if(texel.a == 0.0) discard;
+		else
+			colorOut = vec4(max(intensity*texel.rgb + vec3(spec), 0.1*texel.rgb), texel.a);
 	}
 }
