@@ -42,6 +42,9 @@
 using namespace std;
 
 #define CAPTION "AVT Demo: Phong Shading and Text rendered with FreeType"
+#define MAX_PARTICULES 1000
+#define frand()			((float)rand()/RAND_MAX)
+#define M_PI			3.14159265
 int WindowHandle = 0;
 int WinX = 1024, WinY = 768;
 
@@ -70,6 +73,7 @@ const string font_name = "fonts/arial.ttf";
 //Vector with meshes
 vector<struct MyMesh> myMeshes;
 struct MyMesh waterMesh;
+struct MyMesh finishingLineMesh;
 vector<struct MyMesh> boatMeshes;
 vector<struct MyMesh> floats;
 vector<struct MyMesh> floatCylinders;
@@ -80,7 +84,7 @@ vector<struct MyMesh> islandHouseBodies;
 vector<struct MyMesh> islandHouseRoofs;
 vector<struct MyMesh> auxMeshes;
 vector<struct MyMesh> waterCreatureSpider;
-
+struct MyMesh particlesMesh;
 //External array storage defined in AVTmathLib.cpp
 
 /// The storage for matrices
@@ -103,7 +107,7 @@ GLint spot_dir_loc, spot_dir_loc1;
 GLint direc_loc;
 GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc, fogOnOff_loc;
 GLint normalMap_loc, specularMap_loc, diffMapCount_loc;
-GLuint textures[3];
+GLuint textures[4];
 GLuint* texturesIds;
 //outro GLuint* se quisermos carregar outra textura para outra malha
 
@@ -124,6 +128,18 @@ public: float center[3] = { 25.0f, 0.5f, 0.0f };
 public: float radius = std::sqrt(2);
 };
 
+typedef struct {
+	float	life;		// vida
+	float	fade;		// fade
+	float	r, g, b;    // color
+	GLfloat x, y, z;    // posi‹o
+	GLfloat vx, vy, vz; // velocidade 
+	GLfloat ax, ay, az; // acelera‹o
+} Particle;
+
+Particle particulas[MAX_PARTICULES];
+int deadParticles = 0;
+int fireworks = 0;
 
 
 //boat
@@ -224,6 +240,62 @@ int piranhaTimer = 0;
 int piranhaAngleTimer = 0;
 int remainingLives = 5;
 
+void updateParticles()
+{
+	int i;
+	float h;
+
+	/* Método de Euler de integração de eq. diferenciais ordinárias
+	h representa o step de tempo; dv/dt = a; dx/dt = v; e conhecem-se os valores iniciais de x e v */
+
+	//h = 0.125f;
+	h = 0.033;
+	if (fireworks) {
+
+		for (i = 0; i < MAX_PARTICULES; i++)
+		{
+			particulas[i].x += (h * particulas[i].vx);
+			particulas[i].y += (h * particulas[i].vy);
+			particulas[i].z += (h * particulas[i].vz);
+			particulas[i].vx += (h * particulas[i].ax);
+			particulas[i].vy += (h * particulas[i].ay);
+			particulas[i].vz += (h * particulas[i].az);
+			particulas[i].life -= particulas[i].fade;
+		}
+	}
+}
+
+void iniParticles(void)
+{
+	GLfloat v, theta, phi;
+	int i;
+
+	for (i = 0; i < MAX_PARTICULES; i++)
+	{
+		v = 0.8 * frand() + 0.2;
+		phi = frand() * M_PI;
+		theta = 2.0 * frand() * M_PI;
+
+		particulas[i].x = 0.0f;
+		particulas[i].y = 10.0f;
+		particulas[i].z = 0.0f;
+		particulas[i].vx = v * cos(theta) * sin(phi);
+		particulas[i].vy = v * cos(phi);
+		particulas[i].vz = v * sin(theta) * sin(phi);
+		particulas[i].ax = 0.1f; /* simular um pouco de vento */
+		particulas[i].ay = -0.15f; /* simular a aceleração da gravidade */
+		particulas[i].az = 0.0f;
+
+		/* tom amarelado que vai ser multiplicado pela textura que varia entre branco e preto */
+		particulas[i].r = 0.882f;
+		particulas[i].g = 0.552f;
+		particulas[i].b = 0.211f;
+
+		particulas[i].life = 1.0f;		/* vida inicial */
+		particulas[i].fade = 0.0025f;	    /* step de decréscimo da vida para cada iteração */
+	}
+}
+
 void resetWaterCreatures() { //reset the water creatures positions and speeds after colision with one of them
 	piranhaLevel = 1;
 	for (uint16_t i = 0; i < numberOfCreatures; i++) {
@@ -266,6 +338,9 @@ int checkCollision(float nextBoatCenter[3]) {
 	if (nextBoatCenter[0] > 48.5f || nextBoatCenter[0] < -48.5f || nextBoatCenter[2]> 48.5f || nextBoatCenter[2] < -48.5f) {
 		return 1; //out of bounds 
 
+	}
+	if (nextBoatCenter[0] == -47.0f) {
+		return 3; //collision with finishing line, display firework.
 	}
 	return 0; //no collision
 }
@@ -1017,6 +1092,40 @@ void renderIslandsAndTrees() {
 
 }
 
+void renderFinishingLine() {
+	GLint loc;
+	pushMatrix(MODEL);
+	{
+		translate(MODEL, -47.0f, -0.25f, -50.0f);
+		scale(MODEL, 0.2f, 0.5f, 100.f);
+
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+		glUniform4fv(loc, 1, finishingLineMesh.mat.ambient);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+		glUniform4fv(loc, 1, finishingLineMesh.mat.diffuse);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+		glUniform4fv(loc, 1, finishingLineMesh.mat.specular);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+		glUniform1f(loc, finishingLineMesh.mat.shininess);
+		loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+		glUniform1i(loc, finishingLineMesh.mat.texCount);
+
+		//compute and send the matrices to the shader
+		computeDerivedMatrix(PROJ_VIEW_MODEL);
+		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+		computeNormalMatrix3x3();
+		glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+		//render the parent mesh
+		glBindVertexArray(finishingLineMesh.vao);
+		glDrawElements(finishingLineMesh.type, finishingLineMesh.numIndexes, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+	}
+	popMatrix(MODEL);
+
+}
+
 void renderBoundingSphere() {
 	GLint loc;
 	pushMatrix(MODEL);
@@ -1050,6 +1159,7 @@ void renderScene(void) {
 
 	GLint loc;
 	GLint m_viewport[4];
+	float particle_color[4];
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glGetIntegerv(GL_VIEWPORT, m_viewport);
@@ -1096,6 +1206,8 @@ void renderScene(void) {
 	glBindTexture(GL_TEXTURE_2D, textures[1]);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, textures[2]);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, textures[3]);
 
 	glUniform1i(tex_loc, 0);
 	glUniform1i(tex_loc1, 1);
@@ -1140,19 +1252,77 @@ void renderScene(void) {
 
 
 	renderBoat();
+	renderFinishingLine();
 	renderRedCylinders();
 	renderFloats();
 	renderIslandsAndTrees();
 	renderPlain();
-	glDisable(GL_DEPTH_TEST);
 	//the glyph contains transparent background colors and non-transparent for the actual character pixels. So we use the blending
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	if (fireworks) {
+
+		updateParticles();
+
+		// draw fireworks particles
+
+		glBindTexture(GL_TEXTURE_2D, textures[3]); //particle.tga associated to TU0 
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		glDepthMask(GL_FALSE);  //Depth Buffer Read Only
+
+		glUniform1i(texMode_uniformId, 2); // draw modulated textured particles 
+
+		for (int i = 0; i < MAX_PARTICULES; i++)
+		{
+			if (particulas[i].life > 0.0f) /* só desenha as que ainda estão vivas */
+			{
+
+				/* A vida da partícula representa o canal alpha da cor. Como o blend está activo a cor final é a soma da cor rgb do fragmento multiplicada pelo
+				alpha com a cor do pixel destino */
+
+				particle_color[0] = particulas[i].r;
+				particle_color[1] = particulas[i].g;
+				particle_color[2] = particulas[i].b;
+				particle_color[3] = particulas[i].life;
+
+				// send the material - diffuse color modulated with texture
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+				glUniform4fv(loc, 1, particle_color);
+
+				pushMatrix(MODEL);
+				translate(MODEL, particulas[i].x, particulas[i].y, particulas[i].z);
+
+				// send matrices to OGL
+				computeDerivedMatrix(PROJ_VIEW_MODEL);
+				glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+				glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+				computeNormalMatrix3x3();
+				glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+				glBindVertexArray(particlesMesh.vao);
+				glDrawElements(particlesMesh.type, particlesMesh.numIndexes, GL_UNSIGNED_INT, 0);
+				popMatrix(MODEL);
+			}
+			else deadParticles++;
+		}
+
+		glDepthMask(GL_TRUE); //make depth buffer again writeable
+
+		if (deadParticles == MAX_PARTICULES) {
+			fireworks = 0;
+			deadParticles = 0;
+			printf("All particles dead\n");
+		}
+
+	}
 
 
 	//viewer at origin looking down at  negative z direction
 	pushMatrix(MODEL);
 	loadIdentity(MODEL);
+
 	pushMatrix(PROJECTION);
 	loadIdentity(PROJECTION);
 	pushMatrix(VIEW);
@@ -1174,8 +1344,6 @@ void renderScene(void) {
 	popMatrix(PROJECTION);
 	popMatrix(VIEW);
 	popMatrix(MODEL);
-	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_BLEND);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glutSwapBuffers();
@@ -1563,6 +1731,7 @@ int init()
 	Texture2D_Loader(textures, "stone.tga", 0);
 	Texture2D_Loader(textures, "water_quad.png", 1);
 	Texture2D_Loader(textures, "lightwood.tga", 2);
+	Texture2D_Loader(textures, "particle.tga", 3);
 
 	std::string filepathSpider = "spider/spider.obj";
 	if (!Import3DFromFile(filepathSpider, importerSpider, sceneSpider, scaleFactorSpider)) return 0;
@@ -1606,6 +1775,7 @@ int init()
 	waterMesh = amesh;
 	emissive[3] = 1.0f;
 
+
 	float amb1[] = { 0.3f, 0.0f, 0.0f, 1.0f }; //cor ambiente do cilindro
 	float diff1[] = { 0.8f, 0.1f, 0.1f, 1.0f }; //cor difusa do cilindro ou cor do material 
 	float spec1[] = { 0.9f, 0.9f, 0.9f, 1.0f };
@@ -1647,6 +1817,16 @@ int init()
 	amesh.mat.shininess = shininess;
 	amesh.mat.texCount = texcount;
 	boatMeshes.push_back(amesh);
+
+	//create geometry for finishing line as a green cube
+	amesh = createCube();
+	memcpy(amesh.mat.ambient, amb3, 4 * sizeof(float));
+	memcpy(amesh.mat.diffuse, diff3, 4 * sizeof(float));
+	memcpy(amesh.mat.specular, spec3, 4 * sizeof(float));
+	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+	amesh.mat.shininess = shininess;
+	amesh.mat.texCount = texcount;
+	finishingLineMesh = amesh;
 
 
 	//create paddles sticks as cylinders
@@ -1769,6 +1949,10 @@ int init()
 	amesh.mat.shininess = shininess;
 	amesh.mat.texCount = texcount;
 	auxMeshes.push_back(amesh);
+
+	amesh = createQuad(2.0f, 2.0f);
+	amesh.mat.texCount = texcount;
+	particlesMesh = amesh;
 
 
 	// some GL settings
