@@ -405,6 +405,8 @@ void updateBoat(int value) {
 		myBoat.center[0] = 25.0f;
 		myBoat.center[1] = 0.5f;
 		myBoat.center[2] = 0.0f;
+		paddleangle[0] = 0.0f;
+		paddleangle[1] = 0.0f;
 		resetWaterCreatures();
 		//exit(0);
 	}//if the colision code is not 0 or -1, its a collsion that makes the position update not happen
@@ -951,7 +953,11 @@ void renderIslandsAndTrees() {
 	GLint loc;
 	float cam[3] = { cams[0].camPos[0], cams[0].camPos[1], cams[0].camPos[2] };
 	float pos[3];
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	for (uint16_t i = 0; i < islands.size(); i++) {
+		//matrix for the islands, pop is at line 1145
 		pushMatrix(MODEL);
 		{
 			translate(MODEL, islandPositions[i][0], islandPositions[i][1], islandPositions[i][2]);
@@ -977,175 +983,120 @@ void renderIslandsAndTrees() {
 			glBindVertexArray(islands[i].vao);
 			glDrawElements(islands[i].type, islands[i].numIndexes, GL_UNSIGNED_INT, 0);
 			glBindVertexArray(0);
-			//Render trees on each island
+
+			//begin of billboarding trees
+
+			glUniform1i(texMode_uniformId, 3);
 			pushMatrix(MODEL);
 			{
 				translate(MODEL, 0.0f, 20.0f, 0.0f);
+				pos[0] = islandPositions[i][0]; pos[1] =islandPositions[i][1]+20.0; pos[2] = islandPositions[i][2];
+				if(type==2)
+					l3dBillboardSphericalBegin(cam, pos);
+				else if(type==3)
+					l3dBillboardCylindricalBegin(cam, pos);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-				glUniform4fv(loc, 1, islandTrees[i].mat.ambient);
+				glUniform4fv(loc, 1, treeMesh.mat.ambient);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-				glUniform4fv(loc, 1, islandTrees[i].mat.diffuse);
+				glUniform4fv(loc, 1, treeMesh.mat.diffuse);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-				glUniform4fv(loc, 1, islandTrees[i].mat.specular);
+				glUniform4fv(loc, 1, treeMesh.mat.specular);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-				glUniform1f(loc, islandTrees[i].mat.shininess);
-				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
-				glUniform1i(loc, islandTrees[i].mat.texCount);
+				glUniform1f(loc, treeMesh.mat.shininess);
 
-				//compute and send the matrices to the shader
-				computeDerivedMatrix(PROJ_VIEW_MODEL);
+				pushMatrix(MODEL);
+				translate(MODEL, 0.0, 3.0, 0.0f);
+
+				// send matrices to OGL
+				if (type == 0 || type == 1) {     //Cheating matrix reset billboard techniques
+					computeDerivedMatrix(VIEW_MODEL);
+
+					//reset VIEW_MODEL
+					if (type == 0) BillboardCheatSphericalBegin();
+					else BillboardCheatCylindricalBegin();
+
+					computeDerivedMatrix_PVM(); // calculate PROJ_VIEW_MODEL
+				}
+				else computeDerivedMatrix(PROJ_VIEW_MODEL);
 				glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 				glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
 				computeNormalMatrix3x3();
 				glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
-
-				//render the parent mesh
-				glBindVertexArray(islandTrees[i].vao);
-				glDrawElements(islandTrees[i].type, islandTrees[i].numIndexes, GL_UNSIGNED_INT, 0);
-				glBindVertexArray(0);
-				//render the leaves of the trees
+				glBindVertexArray(treeMesh.vao);
+				glDrawElements(treeMesh.type, treeMesh.numIndexes, GL_UNSIGNED_INT, 0);
+				popMatrix(MODEL);
+			}
+			popMatrix(MODEL);
+			glUniform1i(texMode_uniformId, 0);
+			//end of billboarding trees
+	
+				// Render two houses on each island
+			for (uint16_t j = 0; j < 2; j++) {
 				pushMatrix(MODEL);
 				{
-					translate(MODEL, 0.0f, 1.0f, 0.0f);
-					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-					glUniform4fv(loc, 1, islandLeaves[i].mat.ambient);
-					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-					glUniform4fv(loc, 1, islandLeaves[i].mat.diffuse);
-					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-					glUniform4fv(loc, 1, islandLeaves[i].mat.specular);
-					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-					glUniform1f(loc, islandLeaves[i].mat.shininess);
-					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
-					glUniform1i(loc, islandLeaves[i].mat.texCount);
+					scale(MODEL, 2.5, 2.5, 2.5);
+					// Position the house bodies
+					if (j == 0) {
+						translate(MODEL, 1.5f, 7.0f, 1.5f);  // Position for the first house
+					}
+					else {
+						translate(MODEL, -2.5f, 7.0f, -2.5f); // Position for the second house
+					}
 
-					//compute and send the matrices to the shader
+					// Render house body
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+					glUniform4fv(loc, 1, islandHouseBodies[i].mat.ambient);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+					glUniform4fv(loc, 1, islandHouseBodies[i].mat.diffuse);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+					glUniform4fv(loc, 1, islandHouseBodies[i].mat.specular);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+					glUniform1f(loc, islandHouseBodies[i].mat.shininess);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+					glUniform1i(loc, islandHouseBodies[i].mat.texCount);
+
 					computeDerivedMatrix(PROJ_VIEW_MODEL);
 					glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 					glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
 					computeNormalMatrix3x3();
 					glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
 
-					//render the parent mesh
-					glBindVertexArray(islandLeaves[i].vao);
-					glDrawElements(islandLeaves[i].type, islandLeaves[i].numIndexes, GL_UNSIGNED_INT, 0);
+					glBindVertexArray(islandHouseBodies[i].vao);
+					glDrawElements(islandHouseBodies[i].type, islandHouseBodies[i].numIndexes, GL_UNSIGNED_INT, 0);
+					glBindVertexArray(0);
+
+					// Render house roof
+					translate(MODEL, 0.5f, 1.0f, 0.5f); // Move up to place the roof on top
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
+					glUniform4fv(loc, 1, islandHouseRoofs[i].mat.ambient);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+					glUniform4fv(loc, 1, islandHouseRoofs[i].mat.diffuse);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
+					glUniform4fv(loc, 1, islandHouseRoofs[i].mat.specular);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
+					glUniform1f(loc, islandHouseRoofs[i].mat.shininess);
+					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
+					glUniform1i(loc, islandHouseRoofs[i].mat.texCount);
+
+					computeDerivedMatrix(PROJ_VIEW_MODEL);
+					glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+					glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+					computeNormalMatrix3x3();
+					glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+					glBindVertexArray(islandHouseRoofs[i].vao);
+					glDrawElements(islandHouseRoofs[i].type, islandHouseRoofs[i].numIndexes, GL_UNSIGNED_INT, 0);
 					glBindVertexArray(0);
 				}
 				popMatrix(MODEL);
-			// end of render of basic trees
-			
-
-
-			//begin of billboarding trees
-
-			//glUniform1i(texMode_uniformId, 3);
-			//pushMatrix(MODEL);
-			//{
-			//	translate(MODEL, 0.0f, 20.0f, 0.0f);
-			//	pos[0] = 0.0; pos[1] = 3.0; pos[2] = 0.0;
-			//	if(type==2)
-			//		l3dBillboardSphericalBegin(cam, pos);
-			//	else if(type==3)
-			//		l3dBillboardCylindricalBegin(cam, pos);
-
-			//	loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-			//	glUniform4fv(loc, 1, treeMesh.mat.specular);
-			//	loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-			//	glUniform1f(loc, treeMesh.mat.shininess);
-
-			//	pushMatrix(MODEL);
-			//	translate(MODEL, 0.0, 3.0, 0.0f);
-
-			//	// send matrices to OGL
-			//	if (type == 0 || type == 1) {     //Cheating matrix reset billboard techniques
-			//		computeDerivedMatrix(VIEW_MODEL);
-
-			//		//reset VIEW_MODEL
-			//		if (type == 0) BillboardCheatSphericalBegin();
-			//		else BillboardCheatCylindricalBegin();
-
-			//		computeDerivedMatrix_PVM(); // calculate PROJ_VIEW_MODEL
-			//	}
-			//	else computeDerivedMatrix(PROJ_VIEW_MODEL);
-			//	glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-			//	glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-			//	computeNormalMatrix3x3();
-			//	glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
-			//	glBindVertexArray(treeMesh.vao);
-			//	glDrawElements(treeMesh.type, treeMesh.numIndexes, GL_UNSIGNED_INT, 0);
-			//	popMatrix(MODEL);
-			//}
-			//popMatrix(MODEL);
-			//glUniform1i(texMode_uniformId, 0);
-			//end of billboarding trees
-	
-				// Render two houses on each island
-				for (uint16_t j = 0; j < 2; j++) {
-					pushMatrix(MODEL);
-					{
-						scale(MODEL, 2.5, 2.5, 2.5);
-						// Position the house bodies
-						if (j == 0) {
-							translate(MODEL, 1.5f, -0.8f, 1.5f);  // Position for the first house
-						}
-						else {
-							translate(MODEL, -2.5f, -0.8f, -2.5f); // Position for the second house
-						}
-
-						// Render house body
-						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-						glUniform4fv(loc, 1, islandHouseBodies[i].mat.ambient);
-						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-						glUniform4fv(loc, 1, islandHouseBodies[i].mat.diffuse);
-						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-						glUniform4fv(loc, 1, islandHouseBodies[i].mat.specular);
-						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-						glUniform1f(loc, islandHouseBodies[i].mat.shininess);
-						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
-						glUniform1i(loc, islandHouseBodies[i].mat.texCount);
-
-						computeDerivedMatrix(PROJ_VIEW_MODEL);
-						glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-						glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-						computeNormalMatrix3x3();
-						glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
-
-						glBindVertexArray(islandHouseBodies[i].vao);
-						glDrawElements(islandHouseBodies[i].type, islandHouseBodies[i].numIndexes, GL_UNSIGNED_INT, 0);
-						glBindVertexArray(0);
-
-						// Render house roof
-						translate(MODEL, 0.5f, 1.0f, 0.5f); // Move up to place the roof on top
-						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-						glUniform4fv(loc, 1, islandHouseRoofs[i].mat.ambient);
-						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-						glUniform4fv(loc, 1, islandHouseRoofs[i].mat.diffuse);
-						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
-						glUniform4fv(loc, 1, islandHouseRoofs[i].mat.specular);
-						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
-						glUniform1f(loc, islandHouseRoofs[i].mat.shininess);
-						loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
-						glUniform1i(loc, islandHouseRoofs[i].mat.texCount);
-
-						computeDerivedMatrix(PROJ_VIEW_MODEL);
-						glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-						glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-						computeNormalMatrix3x3();
-						glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
-
-						glBindVertexArray(islandHouseRoofs[i].vao);
-						glDrawElements(islandHouseRoofs[i].type, islandHouseRoofs[i].numIndexes, GL_UNSIGNED_INT, 0);
-						glBindVertexArray(0);
-					}
-					popMatrix(MODEL);
-				}
-			} // if you comment pushMatrix on line 982, you should comment this popMatrix below
-			popMatrix(MODEL);
-		}
+			}
+		} //pop for the push on line 956
 		popMatrix(MODEL);
 
 	}
 
 }
+
 
 void renderFinishingLine() {
 	GLint loc;
@@ -1427,6 +1378,8 @@ void restartGame() {
 	myBoat.center[0] = 25.0f;
 	myBoat.center[1] = 0.5f;
 	myBoat.center[2] = 0.0f;
+	paddleangle[0] = 0.0f;
+	paddleangle[1] = 0.0f;
 	resetWaterCreatures();
 	fogOn = true;
 	dayTime = true;
@@ -2023,10 +1976,13 @@ int init()
 
 	//quad for the trees
 	amesh = createQuad(6, 6);
+	memcpy(amesh.mat.diffuse, diff3, 4 * sizeof(float));
+	memcpy(amesh.mat.ambient, amb3, 4 * sizeof(float));
 	memcpy(amesh.mat.specular, treeSpec,	4 * sizeof(float));
 	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
 	amesh.mat.shininess = 10.0f;
 	amesh.mat.texCount = texcount;
+	treeMesh = amesh;
 
 
 	// some GL settings
