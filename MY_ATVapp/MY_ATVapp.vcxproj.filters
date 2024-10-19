@@ -71,6 +71,9 @@
     <ClInclude Include="l3DBillboard.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="flare.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\pointlight_phong.frag">

@@ -39,6 +39,7 @@
 #include "avtFreeType.h"
 #include "meshFromAssimp.h"
 #include "l3DBillboard.h"
+#include "flare.h"
 
 using namespace std;
 
@@ -48,6 +49,14 @@ using namespace std;
 #define M_PI			3.14159265
 int WindowHandle = 0;
 int WinX = 1024, WinY = 768;
+
+inline double clamp(const double x, const double min, const double max) {
+	return (x < min ? min : (x > max ? max : x));
+}
+
+inline int clampi(const int x, const int min, const int max) {
+	return (x < min ? min : (x > max ? max : x));
+}
 
 unsigned int FrameCount = 0;
 
@@ -100,7 +109,7 @@ GLint pvm_uniformId;
 GLint vm_uniformId;
 GLint normal_uniformId;
 GLint lPos_uniformId;
-GLint tex_loc, tex_loc1, tex_loc2, tex_loc3, tex_loc4;
+GLint tex_loc, tex_loc1, tex_loc2, tex_loc3, tex_loc4, tex_loc5;
 GLint texMode_uniformId;
 GLint point_loc, point_loc1, point_loc2, point_loc3, point_loc4, point_loc5;
 GLint spot_loc, spot_loc1;
@@ -110,8 +119,12 @@ GLint direc_loc;
 GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc, fogOnOff_loc;
 GLint normalMap_loc, specularMap_loc, diffMapCount_loc;
 GLuint textures[5];
+GLuint FlareTextureArray[5];
 GLuint* texturesIds;
 //outro GLuint* se quisermos carregar outra textura para outra malha
+
+FLARE_DEF flare; //one single flare
+float lightScreenPos[3];
 
 //Camera Class
 class camera {
@@ -297,6 +310,61 @@ void iniParticles(void)
 		particulas[i].life = 1.0f;		/* vida inicial */
 		particulas[i].fade = 0.0050f;	    /* step de decréscimo da vida para cada iteração */
 	}
+}
+
+unsigned int getTextureId(char* name) {
+	int i;
+
+	for (i = 0; i < NTEXTURES; ++i)
+	{
+		if (strncmp(name, flareTextureNames[i], strlen(name)) == 0)
+			return i;
+	}
+	return -1;
+}
+
+void    loadFlareFile(FLARE_DEF* flare, char* filename)
+{
+	int     n = 0;
+	FILE* f;
+	char    buf[256];
+	int fields;
+
+	memset(flare, 0, sizeof(FLARE_DEF));
+
+	f = fopen(filename, "r");
+	if (f)
+	{
+		fgets(buf, sizeof(buf), f);
+		sscanf(buf, "%f %f", &flare->fScale, &flare->fMaxSize);
+
+		while (!feof(f))
+		{
+			char            name[8] = { '\0', };
+			double          dDist = 0.0, dSize = 0.0;
+			float			color[4];
+			int				id;
+
+			fgets(buf, sizeof(buf), f);
+			fields = sscanf(buf, "%4s %lf %lf ( %f %f %f %f )", name, &dDist, &dSize, &color[3], &color[0], &color[1], &color[2]);
+			if (fields == 7)
+			{
+				for (int i = 0; i < 4; ++i) color[i] = clamp(color[i] / 255.0f, 0.0f, 1.0f);
+				id = getTextureId(name);
+				if (id < 0) printf("Texture name not recognized\n");
+				else
+					flare->element[n].textureId = id;
+				flare->element[n].fDistance = (float)dDist;
+				flare->element[n].fSize = (float)dSize;
+				memcpy(flare->element[n].matDiffuse, color, 4 * sizeof(float));
+				++n;
+			}
+		}
+
+		flare->nPieces = n;
+		fclose(f);
+	}
+	else printf("Flare file opening error\n");
 }
 
 void resetWaterCreatures() { //reset the water creatures positions and speeds after colision with one of them
@@ -995,10 +1063,6 @@ void renderIslandsAndTrees() {
 					l3dBillboardSphericalBegin(cam, pos);
 				else if(type==3)
 					l3dBillboardCylindricalBegin(cam, pos);
-				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.ambient");
-				glUniform4fv(loc, 1, treeMesh.mat.ambient);
-				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
-				glUniform4fv(loc, 1, treeMesh.mat.diffuse);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.specular");
 				glUniform4fv(loc, 1, treeMesh.mat.specular);
 				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.shininess");
@@ -1161,10 +1225,98 @@ void renderBoundingSphere() {
 	popMatrix(MODEL);
 }
 
+void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {  //lx, ly represent the projected position of light on viewport
+
+	int     dx, dy;          // Screen coordinates of "destination"
+	int     px, py;          // Screen coordinates of flare element
+	int		cx, cy;
+	float    maxflaredist, flaredist, flaremaxsize, flarescale, scaleDistance;
+	int     width, height, alpha;    // Piece parameters;
+	int     i;
+	float	diffuse[4];
+
+	GLint loc;
+
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	int screenMaxCoordX = m_viewport[0] + m_viewport[2] - 1;
+	int screenMaxCoordY = m_viewport[1] + m_viewport[3] - 1;
+
+	//viewport center
+	cx = m_viewport[0] + (int)(0.5f * (float)m_viewport[2]) - 1;
+	cy = m_viewport[1] + (int)(0.5f * (float)m_viewport[3]) - 1;
+
+	// Compute how far off-center the flare source is.
+	maxflaredist = sqrt(cx * cx + cy * cy);
+	flaredist = sqrt((lx - cx) * (lx - cx) + (ly - cy) * (ly - cy));
+	scaleDistance = (maxflaredist - flaredist) / maxflaredist;
+	flaremaxsize = (int)(m_viewport[2] * flare->fMaxSize);
+	flarescale = (int)(m_viewport[2] * flare->fScale);
+
+	// Destination is opposite side of centre from source
+	dx = clampi(cx + (cx - lx), m_viewport[0], screenMaxCoordX);
+	dy = clampi(cy + (cy - ly), m_viewport[1], screenMaxCoordY);
+
+	// Render each element. To be used Texture Unit 0
+
+	glUniform1i(texMode_uniformId, 4); // draw modulated textured particles 
+	glUniform1i(tex_loc5, 0);  //use TU 0
+
+	for (i = 0; i < flare->nPieces; ++i)
+	{
+		// Position is interpolated along line between start and destination.
+		px = (int)((1.0f - flare->element[i].fDistance) * lx + flare->element[i].fDistance * dx);
+		py = (int)((1.0f - flare->element[i].fDistance) * ly + flare->element[i].fDistance * dy);
+		px = clampi(px, m_viewport[0], screenMaxCoordX);
+		py = clampi(py, m_viewport[1], screenMaxCoordY);
+
+		// Piece size are 0 to 1; flare size is proportion of screen width; scale by flaredist/maxflaredist.
+		width = (int)(scaleDistance * flarescale * flare->element[i].fSize);
+
+		// Width gets clamped, to allows the off-axis flaresto keep a good size without letting the elements get big when centered.
+		if (width > flaremaxsize)  width = flaremaxsize;
+
+		height = (int)((float)m_viewport[3] / (float)m_viewport[2] * (float)width);
+		memcpy(diffuse, flare->element[i].matDiffuse, 4 * sizeof(float));
+		diffuse[3] *= scaleDistance;   //scale the alpha channel
+
+		if (width > 1)
+		{
+			// send the material - diffuse color modulated with texture
+			loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+			glUniform4fv(loc, 1, diffuse);
+
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, FlareTextureArray[flare->element[i].textureId]);
+			pushMatrix(MODEL);
+			translate(MODEL, (float)(px - width * 0.0f), (float)(py - height * 0.0f), 0.0f);
+			scale(MODEL, (float)width, (float)height, 1);
+			computeDerivedMatrix(PROJ_VIEW_MODEL);
+			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+			computeNormalMatrix3x3();
+			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+			glBindVertexArray(myMeshes[6].vao);
+			glDrawElements(myMeshes[6].type, myMeshes[6].numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
+			popMatrix(MODEL);
+		}
+	}
+	glUniform1i(texMode_uniformId, 0);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+}
+
 void renderScene(void) {
 
 	GLint loc;
-	GLint m_viewport[4];
+	int m_viewport[4];
+	glGetIntegerv(GL_VIEWPORT, m_viewport);
 	float particle_color[4];
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1334,12 +1486,23 @@ void renderScene(void) {
 	//viewer at origin looking down at  negative z direction
 	pushMatrix(MODEL);
 	loadIdentity(MODEL);
+	computeDerivedMatrix(PROJ_VIEW_MODEL);
+	int flarePos[2];
+
+	if (!project(pointLights[0], lightScreenPos, m_viewport)) {
+		printf("Error in getting projected light in screen\n");  //Calculate the window Coordinates of the light position: the projected position of light on viewport
+	}
+	flarePos[0] = clampi((int)lightScreenPos[0], m_viewport[0], m_viewport[0] + m_viewport[2] - 1);
+	flarePos[1] = clampi((int)lightScreenPos[1], m_viewport[1], m_viewport[1] + m_viewport[3] - 1);
+	popMatrix(MODEL);
 
 	pushMatrix(PROJECTION);
 	loadIdentity(PROJECTION);
 	pushMatrix(VIEW);
 	loadIdentity(VIEW);
 	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
+	
+	
 	std::ostringstream timeString;
 	timeString << "Time: " << timeMinutes << ":" << std::setw(2) << std::setfill('0') << timeSeconds;
 	RenderText(shaderText, timeString.str(), 50.0f, 50.0f, 1.0f, 0.8f, 0.5f, 0.2f);
@@ -1353,9 +1516,13 @@ void renderScene(void) {
 	RenderText(shaderText, piranhaString.c_str(), 800.0f, 600.0f, 1.0f, 0.8f, 0.5f, 0.2f);
 	std::string lives = "Remaining Lives: " + std::to_string(remainingLives);
 	RenderText(shaderText, lives.c_str(), 50.0f, 600.0f, 1.0f, 0.8f, 0.5f, 0.2f);
+	//if (spotLightsOn) {
+	//	render_flare(&flare, flarePos[0], flarePos[1], m_viewport);
+	//}
+	
+	
 	popMatrix(PROJECTION);
 	popMatrix(VIEW);
-	popMatrix(MODEL);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glutSwapBuffers();
@@ -1689,6 +1856,7 @@ GLuint setupShaders() {
 	tex_loc2 = glGetUniformLocation(shader.getProgramIndex(), "texmap2");
 	tex_loc3 = glGetUniformLocation(shader.getProgramIndex(), "texmap3");
 	tex_loc4 = glGetUniformLocation(shader.getProgramIndex(), "texmap4");
+	tex_loc5 = glGetUniformLocation(shader.getProgramIndex(), "texmap5");
 	directOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "dayTime");
 	pointOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "pointLightsOn");
 	spotOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLightsOn");
@@ -1749,6 +1917,13 @@ int init()
 	Texture2D_Loader(textures, "lightwood.tga", 2);
 	Texture2D_Loader(textures, "particle.tga", 3);
 	Texture2D_Loader(textures, "tree.tga", 4);
+
+	glGenTextures(5, FlareTextureArray);
+	Texture2D_Loader(FlareTextureArray, "crcl.tga", 0);
+	Texture2D_Loader(FlareTextureArray, "flar.tga", 1);
+	Texture2D_Loader(FlareTextureArray, "hxgn.tga", 2);
+	Texture2D_Loader(FlareTextureArray, "ring.tga", 3);
+	Texture2D_Loader(FlareTextureArray, "sun.tga", 4);
 
 	std::string filepathSpider = "spider/spider.obj";
 	if (!Import3DFromFile(filepathSpider, importerSpider, sceneSpider, scaleFactorSpider)) return 0;
@@ -1976,13 +2151,13 @@ int init()
 
 	//quad for the trees
 	amesh = createQuad(6, 6);
-	memcpy(amesh.mat.diffuse, diff3, 4 * sizeof(float));
-	memcpy(amesh.mat.ambient, amb3, 4 * sizeof(float));
 	memcpy(amesh.mat.specular, treeSpec,	4 * sizeof(float));
 	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
 	amesh.mat.shininess = 10.0f;
 	amesh.mat.texCount = texcount;
 	treeMesh = amesh;
+
+	loadFlareFile(&flare, "flare.txt");
 
 
 	// some GL settings
