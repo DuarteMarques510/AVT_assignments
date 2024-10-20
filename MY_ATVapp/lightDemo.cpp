@@ -98,6 +98,7 @@ vector<struct MyMesh> waterCreatureSpider;
 struct MyMesh particlesMesh;
 struct MyMesh treeMesh;
 struct MyMesh flareMesh;
+struct MyMesh skyboxMesh;
 //External array storage defined in AVTmathLib.cpp
 
 /// The storage for matrices
@@ -111,8 +112,10 @@ GLint pvm_uniformId;
 GLint vm_uniformId;
 GLint normal_uniformId;
 GLint lPos_uniformId;
-GLint tex_loc, tex_loc1, tex_loc2, tex_loc3, tex_loc4, tex_loc5;
+GLint tex_loc, tex_loc1, tex_loc2, tex_loc3, tex_loc4, tex_loc5, tex_cube_loc;
 GLint texMode_uniformId;
+GLint model_uniformId;
+GLint view_uniformId;
 GLint point_loc, point_loc1, point_loc2, point_loc3, point_loc4, point_loc5;
 GLint spot_loc, spot_loc1;
 GLint spot_angle_loc, spot_angle_loc1;
@@ -120,7 +123,7 @@ GLint spot_dir_loc, spot_dir_loc1;
 GLint direc_loc;
 GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc, fogOnOff_loc;
 GLint normalMap_loc, specularMap_loc, diffMapCount_loc;
-GLuint textures[5];
+GLuint textures[6];
 GLuint FlareTextureArray[5];
 GLuint* texturesIds;
 //outro GLuint* se quisermos carregar outra textura para outra malha
@@ -691,7 +694,7 @@ void aiRecursive_render(const aiNode* nd, vector<struct MyMesh>& myMeshes, GLuin
 
 				//Activate a TU with a Texture Object
 				GLuint TU = myMeshes[nd->mMeshes[n]].texUnits[i];
-				glActiveTexture(GL_TEXTURE5 + TU);
+				glActiveTexture(GL_TEXTURE6 + TU);
 				glBindTexture(GL_TEXTURE_2D, textureIds[TU]);
 
 				if (myMeshes[nd->mMeshes[n]].texTypes[i] == DIFFUSE) {
@@ -724,6 +727,7 @@ void aiRecursive_render(const aiNode* nd, vector<struct MyMesh>& myMeshes, GLuin
 				else printf("Texture Map not supported\n");
 			}
 		//send matrices to OGL
+		//glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
 		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -763,6 +767,7 @@ void renderBoat(void) {
 		glUniform1i(loc, boatMeshes[0].mat.texCount);
 
 		//compute and send the matrices to the shader
+		//glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
 		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -976,6 +981,7 @@ void renderFloats() {
 			glUniform1i(loc, floats[i].mat.texCount);
 
 			//compute and send the matrices to the shader
+			//glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 			computeDerivedMatrix(PROJ_VIEW_MODEL);
 			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -1001,6 +1007,7 @@ void renderFloats() {
 				glUniform1i(loc, floatCylinders[i].mat.texCount);
 
 				//compute and send the matrices to the shader
+				//glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 				computeDerivedMatrix(PROJ_VIEW_MODEL);
 				glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 				glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -1017,6 +1024,40 @@ void renderFloats() {
 		popMatrix(MODEL);
 	}
 
+}
+void renderSkyBox() {
+	GLint loc;
+	glUniform1i(texMode_uniformId, 5);
+
+	glDepthMask(GL_FALSE);
+	glFrontFace(GL_CW);
+
+	glDepthMask(GL_FALSE);
+	glFrontFace(GL_CW);
+
+	pushMatrix(MODEL);
+	pushMatrix(VIEW);
+
+
+	mMatrix[VIEW][12] = 0.0f;
+	mMatrix[VIEW][13] = 0.0f;
+	mMatrix[VIEW][14] = 0.0f;
+
+	scale(MODEL, 100.0f, 100.0f, 100.0f);
+	translate(MODEL, -0.5f, -0.5f, -0.5f);
+
+	glUniformMatrix4fv(model_uniformId, 1, GL_FALSE, mMatrix[MODEL]); //Transformação de modelação do cubo unitário para o "Big Cube"
+	computeDerivedMatrix(PROJ_VIEW_MODEL);
+	glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+
+	glBindVertexArray(skyboxMesh.vao);
+	glDrawElements(skyboxMesh.type, skyboxMesh.numIndexes, GL_UNSIGNED_INT, 0);
+	glBindVertexArray(0);
+	popMatrix(MODEL);
+	popMatrix(VIEW);
+
+	glFrontFace(GL_CCW); // restore counter clockwise vertex order to mean the front
+	glDepthMask(GL_TRUE);
 }
 
 void renderIslandsAndTrees() {
@@ -1043,6 +1084,7 @@ void renderIslandsAndTrees() {
 			glUniform1i(loc, islands[i].mat.texCount);
 
 			//compute and send the matrices to the shader
+			//glUniformMatrix4fv(model_uniformId, 1, GL_FALSE, mMatrix[MODEL]);
 			computeDerivedMatrix(PROJ_VIEW_MODEL);
 			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -1074,6 +1116,7 @@ void renderIslandsAndTrees() {
 				translate(MODEL, 0.0, 3.0, 0.0f);
 
 				// send matrices to OGL
+				//glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 				if (type == 0 || type == 1) {     //Cheating matrix reset billboard techniques
 					computeDerivedMatrix(VIEW_MODEL);
 
@@ -1121,6 +1164,7 @@ void renderIslandsAndTrees() {
 					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
 					glUniform1i(loc, islandHouseBodies[i].mat.texCount);
 
+					//glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 					computeDerivedMatrix(PROJ_VIEW_MODEL);
 					glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 					glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -1144,6 +1188,7 @@ void renderIslandsAndTrees() {
 					loc = glGetUniformLocation(shader.getProgramIndex(), "mat.texCount");
 					glUniform1i(loc, islandHouseRoofs[i].mat.texCount);
 
+					//glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 					computeDerivedMatrix(PROJ_VIEW_MODEL);
 					glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 					glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -1183,6 +1228,7 @@ void renderFinishingLine() {
 		glUniform1i(loc, finishingLineMesh.mat.texCount);
 
 		//compute and send the matrices to the shader
+		//glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
 		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -1213,6 +1259,7 @@ void renderBoundingSphere() {
 		glUniform1f(loc, auxMeshes[0].mat.shininess);
 
 		//compute and send the matrices to the shader
+		//glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
 		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -1298,6 +1345,7 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {  //lx, ly
 			pushMatrix(MODEL);
 			translate(MODEL, (float)(px - width * 0.0f), (float)(py - height * 0.0f), 0.0f);
 			scale(MODEL, (float)width, (float)height, 1);
+			//glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 			computeDerivedMatrix(PROJ_VIEW_MODEL);
 			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -1385,12 +1433,15 @@ void renderScene(void) {
 	glBindTexture(GL_TEXTURE_2D, textures[3]);
 	glActiveTexture(GL_TEXTURE4);
 	glBindTexture(GL_TEXTURE_2D, textures[4]);
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textures[5]);
 
 	glUniform1i(tex_loc, 0);
 	glUniform1i(tex_loc1, 1);
 	glUniform1i(tex_loc2, 2);
 	glUniform1i(tex_loc3, 3);
 	glUniform1i(tex_loc4, 4);
+	glUniform1i(tex_cube_loc, 5);
 
 	glUniform1i(directOnOff_loc, dayTime); //send boolean variables to shader
 	glUniform1i(pointOnOff_loc, pointLightsOn);
@@ -1429,7 +1480,7 @@ void renderScene(void) {
 	}
 
 
-
+	renderSkyBox();
 	renderBoat();
 	renderFinishingLine();
 	renderRedCylinders();
@@ -1866,8 +1917,11 @@ GLuint setupShaders() {
 	pvm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_pvm");
 	vm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_viewModel");
 	normal_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_normal");
+	model_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_Model");
+	view_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_View");
 	lPos_uniformId = glGetUniformLocation(shader.getProgramIndex(), "l_pos");
 	normalMap_loc = glGetUniformLocation(shader.getProgramIndex(), "normalMap");
+	tex_cube_loc = glGetUniformLocation(shader.getProgramIndex(), "cubeMap");
 	specularMap_loc = glGetUniformLocation(shader.getProgramIndex(), "specularMap");
 	diffMapCount_loc = glGetUniformLocation(shader.getProgramIndex(), "diffMapCount");
 	point_loc = glGetUniformLocation(shader.getProgramIndex(), "pointLights[0].position");
@@ -1943,12 +1997,15 @@ int init()
 	/// Initialization of freetype library with font_name file
 	freeType_init(font_name);
 
-	glGenTextures(5, textures);
+	glGenTextures(6, textures);
 	Texture2D_Loader(textures, "stone.tga", 0);
 	Texture2D_Loader(textures, "water_quad.png", 1);
 	Texture2D_Loader(textures, "lightwood.tga", 2);
 	Texture2D_Loader(textures, "particle.tga", 3);
 	Texture2D_Loader(textures, "tree.tga", 4);
+
+	const char* filenames[] = { "posx.jpg", "negx.jpg", "posy.jpg", "negy.jpg", "posz.jpg", "negz.jpg" };
+	TextureCubeMap_Loader(textures, filenames, 5);
 
 	glGenTextures(5, FlareTextureArray);
 	Texture2D_Loader(FlareTextureArray, "crcl.tga", 0);
@@ -2033,6 +2090,18 @@ int init()
 	amesh.mat.shininess = shininess;
 	amesh.mat.texCount = texcount;
 	boatMeshes.push_back(amesh);
+
+
+	//create geometry for the skybox
+	amesh = createCube();
+	memcpy(amesh.mat.ambient, amb, 4 * sizeof(float));
+	memcpy(amesh.mat.diffuse, diff, 4 * sizeof(float));
+	memcpy(amesh.mat.specular, spec, 4 * sizeof(float));
+	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+	amesh.mat.shininess = shininess;
+	amesh.mat.texCount = texcount;
+	skyboxMesh = amesh;
+
 
 	// create geometry and VAO of the pawn on top of the boat
 	amesh = createPawn();
@@ -2198,12 +2267,12 @@ int init()
 	// some GL settings
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glFrontFace(GL_CCW);
 	glEnable(GL_MULTISAMPLE);
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	
-	
-	glClearStencil(0x0);
-	glEnable(GL_STENCIL_TEST);
 	return 1;
 
 }
