@@ -12,6 +12,7 @@
 //
 
 #include <math.h>
+#include <cmath>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -96,6 +97,7 @@ vector<struct MyMesh> auxMeshes;
 vector<struct MyMesh> waterCreatureSpider;
 struct MyMesh particlesMesh;
 struct MyMesh treeMesh;
+struct MyMesh flareMesh;
 //External array storage defined in AVTmathLib.cpp
 
 /// The storage for matrices
@@ -215,7 +217,7 @@ int activeCamera = 0;
 
 bool canChangeDirection = true; //when true the boat can change direction, starts at true because the boat starts at speed 0
 bool dayTime = true;
-bool pointLightsOn = true;
+bool pointLightsOn = false;
 bool spotLightsOn = true;
 bool fogOn = true;
 bool paused = false;
@@ -1225,6 +1227,8 @@ void renderBoundingSphere() {
 	popMatrix(MODEL);
 }
 
+
+
 void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {  //lx, ly represent the projected position of light on viewport
 
 	int     dx, dy;          // Screen coordinates of "destination"
@@ -1300,8 +1304,8 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {  //lx, ly
 			computeNormalMatrix3x3();
 			glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
 
-			glBindVertexArray(myMeshes[6].vao);
-			glDrawElements(myMeshes[6].type, myMeshes[6].numIndexes, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(flareMesh.vao);
+			glDrawElements(flareMesh.type, flareMesh.numIndexes, GL_UNSIGNED_INT, 0);
 			glBindVertexArray(0);
 			popMatrix(MODEL);
 		}
@@ -1310,6 +1314,19 @@ void render_flare(FLARE_DEF* flare, int lx, int ly, int* m_viewport) {  //lx, ly
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 	glDisable(GL_BLEND);
+}
+
+float dotProduct(const float* vec1, const float* vec2) {
+	return vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2];
+}
+float magnitude(const float* vec) {
+	return std::sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+}
+float angleBetweenVectors(const float* vec1, const float* vec2) {
+	float dot = dotProduct(vec1, vec2);
+	float mag1 = magnitude(vec1);
+	float mag2 = magnitude(vec2);
+	return std::acos(dot / (mag1 * mag2));
 }
 
 void renderScene(void) {
@@ -1489,6 +1506,10 @@ void renderScene(void) {
 	computeDerivedMatrix(PROJ_VIEW_MODEL);
 	int flarePos[2];
 
+	float camDir[3] = { cams[activeCamera].camTarget[0] - cams[activeCamera].camPos[0], cams[activeCamera].camTarget[1] - cams[activeCamera].camPos[1], cams[activeCamera].camTarget[2] - cams[activeCamera].camPos[2] };
+	float lightDir[3] = { pointLights[0][0] - cams[activeCamera].camPos[0], pointLights[0][1] - cams[activeCamera].camPos[1], pointLights[0][2] - cams[activeCamera].camPos[2] };
+	float angle = angleBetweenVectors(camDir, lightDir);
+
 	if (!project(pointLights[0], lightScreenPos, m_viewport)) {
 		printf("Error in getting projected light in screen\n");  //Calculate the window Coordinates of the light position: the projected position of light on viewport
 	}
@@ -1501,8 +1522,20 @@ void renderScene(void) {
 	pushMatrix(VIEW);
 	loadIdentity(VIEW);
 	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
-	
-	
+	if (pointLightsOn && angle < M_PI / 2) {
+		render_flare(&flare, flarePos[0], flarePos[1], m_viewport);
+	}
+
+	popMatrix(PROJECTION);
+	popMatrix(VIEW);
+
+
+	pushMatrix(PROJECTION);
+	loadIdentity(PROJECTION);
+	pushMatrix(VIEW);
+	loadIdentity(VIEW);
+	ortho(m_viewport[0], m_viewport[0] + m_viewport[2] - 1, m_viewport[1], m_viewport[1] + m_viewport[3] - 1, -1, 1);
+
 	std::ostringstream timeString;
 	timeString << "Time: " << timeMinutes << ":" << std::setw(2) << std::setfill('0') << timeSeconds;
 	RenderText(shaderText, timeString.str(), 50.0f, 50.0f, 1.0f, 0.8f, 0.5f, 0.2f);
@@ -1516,9 +1549,6 @@ void renderScene(void) {
 	RenderText(shaderText, piranhaString.c_str(), 800.0f, 600.0f, 1.0f, 0.8f, 0.5f, 0.2f);
 	std::string lives = "Remaining Lives: " + std::to_string(remainingLives);
 	RenderText(shaderText, lives.c_str(), 50.0f, 600.0f, 1.0f, 0.8f, 0.5f, 0.2f);
-	//if (spotLightsOn) {
-	//	render_flare(&flare, flarePos[0], flarePos[1], m_viewport);
-	//}
 	
 	
 	popMatrix(PROJECTION);
@@ -1528,10 +1558,7 @@ void renderScene(void) {
 	glutSwapBuffers();
 }
 
-// ------------------------------------------------------------
-//
-// Events from the Keyboard
-//
+
 void restartGame() {
 	myBoat.speed = 0.0f;
 	myBoat.angularSpeed = 0.0f;
@@ -1558,6 +1585,11 @@ void restartGame() {
 	timeSeconds = 0;
 	gameOver = 0;
 }
+
+// ------------------------------------------------------------
+//
+// Events from the Keyboard
+//
 
 void processKeys(unsigned char key, int xx, int yy)
 {
@@ -2156,6 +2188,9 @@ int init()
 	amesh.mat.shininess = 10.0f;
 	amesh.mat.texCount = texcount;
 	treeMesh = amesh;
+
+	amesh = createQuad(1, 1);
+	flareMesh = amesh;
 
 	loadFlareFile(&flare, "flare.txt");
 
