@@ -1568,6 +1568,7 @@ void renderScene(void) {
 	flarePos[1] = clampi((int)lightScreenPos[1], m_viewport[1], m_viewport[1] + m_viewport[3] - 1);
 	popMatrix(MODEL);
 
+
 	pushMatrix(PROJECTION);
 	loadIdentity(PROJECTION);
 	pushMatrix(VIEW);
@@ -1580,7 +1581,10 @@ void renderScene(void) {
 	popMatrix(PROJECTION);
 	popMatrix(VIEW);
 
+	glDisable(GL_DEPTH_TEST);
 
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	pushMatrix(PROJECTION);
 	loadIdentity(PROJECTION);
 	pushMatrix(VIEW);
@@ -1600,10 +1604,13 @@ void renderScene(void) {
 	RenderText(shaderText, piranhaString.c_str(), 800.0f, 600.0f, 1.0f, 0.8f, 0.5f, 0.2f);
 	std::string lives = "Remaining Lives: " + std::to_string(remainingLives);
 	RenderText(shaderText, lives.c_str(), 50.0f, 600.0f, 1.0f, 0.8f, 0.5f, 0.2f);
-	
-	
+
+	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+
 	popMatrix(PROJECTION);
 	popMatrix(VIEW);
+
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glutSwapBuffers();
