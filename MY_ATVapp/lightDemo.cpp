@@ -691,12 +691,10 @@ void aiRecursive_render(const aiNode* nd, vector<struct MyMesh>& myMeshes, GLuin
 
 		if (myMeshes[nd->mMeshes[n]].mat.texCount != 0)
 			for (unsigned int i = 0; i < myMeshes[nd->mMeshes[n]].mat.texCount; ++i) {
-
 				//Activate a TU with a Texture Object
 				GLuint TU = myMeshes[nd->mMeshes[n]].texUnits[i];
-				glActiveTexture(GL_TEXTURE6 + TU);
+				glActiveTexture(GL_TEXTURE0 + TU);
 				glBindTexture(GL_TEXTURE_2D, textureIds[TU]);
-
 				if (myMeshes[nd->mMeshes[n]].texTypes[i] == DIFFUSE) {
 					if (diffMapCount == 0) {
 						diffMapCount++;
@@ -1032,9 +1030,6 @@ void renderSkyBox() {
 	glDepthMask(GL_FALSE);
 	glFrontFace(GL_CW);
 
-	glDepthMask(GL_FALSE);
-	glFrontFace(GL_CW);
-
 	pushMatrix(MODEL);
 	pushMatrix(VIEW);
 
@@ -1058,6 +1053,7 @@ void renderSkyBox() {
 
 	glFrontFace(GL_CCW); // restore counter clockwise vertex order to mean the front
 	glDepthMask(GL_TRUE);
+	glUniform1i(texMode_uniformId, 0);
 }
 
 void renderIslandsAndTrees() {
@@ -1448,42 +1444,62 @@ void renderScene(void) {
 	glUniform1i(spotOnOff_loc, spotLightsOn);
 	glUniform1i(fogOnOff_loc, fogOn);
 
-	if (dayTime) {
-		multMatrixPoint(VIEW, DirectlightPos, res);
-		glUniform4fv(direc_loc, 1, res);
-	}
-	if (pointLightsOn) {
-		multMatrixPoint(VIEW, pointLights[0], res);
-		glUniform4fv(point_loc, 1, res);
-		multMatrixPoint(VIEW, pointLights[1], res);
-		glUniform4fv(point_loc1, 1, res);
-		multMatrixPoint(VIEW, pointLights[2], res);
-		glUniform4fv(point_loc2, 1, res);
-		multMatrixPoint(VIEW, pointLights[3], res);
-		glUniform4fv(point_loc3, 1, res);
-		multMatrixPoint(VIEW, pointLights[4], res);
-		glUniform4fv(point_loc4, 1, res);
-		multMatrixPoint(VIEW, pointLights[5], res);
-		glUniform4fv(point_loc5, 1, res);
-	}
-	if (spotLightsOn) {
-		multMatrixPoint(VIEW, spotLights[0].position, res);
-		glUniform4fv(spot_loc, 1, res);
-		multMatrixPoint(VIEW, spotLights[1].position, res);
-		glUniform4fv(spot_loc1, 1, res);
-		multMatrixPoint(VIEW, spotLights[0].direction, res);
-		glUniform4fv(spot_dir_loc, 1, res);
-		multMatrixPoint(VIEW, spotLights[1].direction, res);
-		glUniform4fv(spot_dir_loc1, 1, res);
-		glUniform1f(spot_angle_loc, spotLights[0].angle);
-		glUniform1f(spot_angle_loc1, spotLights[1].angle);
-	}
+	
+	multMatrixPoint(VIEW, DirectlightPos, res);
+	glUniform4fv(direc_loc, 1, res);
+	
+	multMatrixPoint(VIEW, pointLights[0], res);
+	glUniform4fv(point_loc, 1, res);
+	multMatrixPoint(VIEW, pointLights[1], res);
+	glUniform4fv(point_loc1, 1, res);
+	multMatrixPoint(VIEW, pointLights[2], res);
+	glUniform4fv(point_loc2, 1, res);
+	multMatrixPoint(VIEW, pointLights[3], res);
+	glUniform4fv(point_loc3, 1, res);
+	multMatrixPoint(VIEW, pointLights[4], res);
+	glUniform4fv(point_loc4, 1, res);
+	multMatrixPoint(VIEW, pointLights[5], res);
+	glUniform4fv(point_loc5, 1, res);
+	
+	
+	multMatrixPoint(VIEW, spotLights[0].position, res);
+	glUniform4fv(spot_loc, 1, res);
+	multMatrixPoint(VIEW, spotLights[1].position, res);
+	glUniform4fv(spot_loc1, 1, res);
+	multMatrixPoint(VIEW, spotLights[0].direction, res);
+	glUniform4fv(spot_dir_loc, 1, res);
+	multMatrixPoint(VIEW, spotLights[1].direction, res);
+	glUniform4fv(spot_dir_loc1, 1, res);
+	glUniform1f(spot_angle_loc, spotLights[0].angle);
+	glUniform1f(spot_angle_loc1, spotLights[1].angle);
 
 
 	renderSkyBox();
 	renderBoat();
 	renderFinishingLine();
 	renderRedCylinders();
+
+	//restore textures potentially taken by the spiders
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, textures[0]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, textures[1]);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, textures[2]);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, textures[3]);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, textures[4]);
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textures[5]);
+
+	glUniform1i(tex_loc, 0);
+	glUniform1i(tex_loc1, 1);
+	glUniform1i(tex_loc2, 2);
+	glUniform1i(tex_loc3, 3);
+	glUniform1i(tex_loc4, 4);
+	glUniform1i(tex_cube_loc, 5);
+
 	renderFloats();
 	renderIslandsAndTrees();
 	renderPlain();
@@ -1611,7 +1627,7 @@ void renderScene(void) {
 	popMatrix(PROJECTION);
 	popMatrix(VIEW);
 
-
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glutSwapBuffers();
 }

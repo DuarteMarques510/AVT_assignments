@@ -6,6 +6,7 @@ uniform sampler2D texmap2;
 uniform sampler2D texmap3;
 uniform sampler2D texmap4;
 uniform sampler2D texmap5;
+uniform samplerCube cubeMap;
 
 out vec4 colorOut;
 
@@ -63,6 +64,7 @@ in Data {
 	vec3 eye;
 	vec3 lightDir;
 	vec2 tex_coord;
+	vec3 skyboxTexCoord;
 } DataIn;
 
 in vec4 pos;
@@ -187,5 +189,8 @@ void main() {
 		if((texel.a == 0.0)  || (mat.diffuse.a == 0.0) ) discard;
 		else
 			colorOut = mat.diffuse * texel;
+	}
+	else if(texMode==5){
+		colorOut = texture(texmap1, DataIn.tex_coord);
 	}
 }
