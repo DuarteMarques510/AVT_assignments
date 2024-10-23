@@ -1390,17 +1390,29 @@ void renderScene(void) {
 	loadIdentity(MODEL);
 
 	if (activeCamera == 0) {
-		// Update the camera position relative to the boat, maintaining the offset
-		cams[activeCamera].camPos[0] = myBoat.position[0] + cameraOffset[0];
-		cams[activeCamera].camPos[1] = myBoat.position[1] + cameraOffset[1];
-		cams[activeCamera].camPos[2] = myBoat.position[2] + cameraOffset[2];
-
-		cams[activeCamera].camTarget[0] = myBoat.position[0];
+		// Keep the camera facing the boat, but allow manual control to adjust the view
+		float boatAngleRadians = myBoat.angle * M_PI / 180.0f;
+		float cameraAngleRadians = (myBoat.angle + alpha) * M_PI / 180.0f;
+	
+		cams[activeCamera].camPos[0] = myBoat.position[0] + r * sin(cameraAngleRadians) * cos(beta * M_PI / 180.0f);
+		cams[activeCamera].camPos[1] = myBoat.position[1] + r * sin(beta * M_PI / 180.0f);  // Controls the height
+		cams[activeCamera].camPos[2] = myBoat.position[2] + r * cos(cameraAngleRadians) * cos(beta * M_PI / 180.0f);
+	
+		// The camera is directed to where the boat is facing
+		cams[activeCamera].camTarget[0] = myBoat.position[0] + sin(boatAngleRadians);
 		cams[activeCamera].camTarget[1] = myBoat.position[1];
-		cams[activeCamera].camTarget[2] = myBoat.position[2];
+		cams[activeCamera].camTarget[2] = myBoat.position[2] + cos(boatAngleRadians);
 	}
-	// set the camera using a function similar to gluLookAt
-	lookAt(cams[activeCamera].camPos[0], cams[activeCamera].camPos[1], cams[activeCamera].camPos[2], cams[activeCamera].camTarget[0], cams[activeCamera].camTarget[1], cams[activeCamera].camTarget[2], 0, 1, 0);
+
+	lookAt(
+		cams[activeCamera].camPos[0],
+		cams[activeCamera].camPos[1],
+		cams[activeCamera].camPos[2],
+		cams[activeCamera].camTarget[0],
+		cams[activeCamera].camTarget[1],
+		cams[activeCamera].camTarget[2],
+		0, 1, 0  // Vetor para cima
+	);s[activeCamera].camTarget[2], 0, 1, 0);
 
 	float ratio = (float)(m_viewport[2] - m_viewport[0]) / (float)(m_viewport[3] - m_viewport[1]);
 	loadIdentity(PROJECTION);
