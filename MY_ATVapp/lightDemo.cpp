@@ -77,6 +77,9 @@ VSShaderLib shader;  //geometry
 VSShaderLib shaderText;  //render bitmap text
 
 bool normalMapKey =true;
+bool cubeMapKey = false;
+int reflect_perFragment = 0;
+bool bumpMapping = false;
 
 //File with the font
 const string font_name = "fonts/arial.ttf";
@@ -123,6 +126,9 @@ GLint spot_dir_loc, spot_dir_loc1;
 GLint direc_loc;
 GLint directOnOff_loc, pointOnOff_loc, spotOnOff_loc, fogOnOff_loc;
 GLint normalMap_loc, specularMap_loc, diffMapCount_loc;
+GLint cubeMapping;
+GLint reflect_perFragment_uniformId; //reflection vector calculated in the frag shader
+GLint bumpMapping_uniformId;
 GLuint textures[6];
 GLuint FlareTextureArray[5];
 GLuint* texturesIds;
@@ -748,6 +754,8 @@ void aiRecursive_render(const aiNode* nd, vector<struct MyMesh>& myMeshes, GLuin
 void renderBoat(void) {
 	//render the boat
 	GLint loc;
+	glUniform1i(cubeMapping, cubeMapKey);
+	glUniform1i(reflect_perFragment_uniformId, reflect_perFragment);
 	pushMatrix(MODEL);
 	{
 		//translate the boat to the position
@@ -765,7 +773,7 @@ void renderBoat(void) {
 		glUniform1i(loc, boatMeshes[0].mat.texCount);
 
 		//compute and send the matrices to the shader
-		//glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
+		glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 		computeDerivedMatrix(PROJ_VIEW_MODEL);
 		glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 		glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -794,6 +802,7 @@ void renderBoat(void) {
 			glUniform1i(loc, boatMeshes[1].mat.texCount);
 
 			//compute and send the matrices to the shader
+			glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 			computeDerivedMatrix(PROJ_VIEW_MODEL);
 			glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 			glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -839,6 +848,7 @@ void renderBoat(void) {
 				glUniform1i(loc, boatMeshes[2+i].mat.texCount);
 
 				//compute and send the matrices to the shader
+				glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 				computeDerivedMatrix(PROJ_VIEW_MODEL);
 				glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 				glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -867,6 +877,7 @@ void renderBoat(void) {
 					glUniform1i(loc, boatMeshes[4+i].mat.texCount);
 
 					//compute and send the matrices to the shader
+					glUniformMatrix4fv(view_uniformId, 1, GL_FALSE, mMatrix[VIEW]);
 					computeDerivedMatrix(PROJ_VIEW_MODEL);
 					glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
 					glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
@@ -883,6 +894,7 @@ void renderBoat(void) {
 			popMatrix(MODEL);
 		}
 	}
+	glUniform1i(cubeMapping, false);
 	popMatrix(MODEL);
 }
 void renderPlain(void) {
@@ -1062,8 +1074,8 @@ void renderIslandsAndTrees() {
 	float pos[3];
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 	for (uint16_t i = 0; i < islands.size(); i++) {
+		glUniform1i(bumpMapping_uniformId, bumpMapping);
 		//matrix for the islands, pop is at line 1145
 		pushMatrix(MODEL);
 		{
@@ -1091,7 +1103,7 @@ void renderIslandsAndTrees() {
 			glBindVertexArray(islands[i].vao);
 			glDrawElements(islands[i].type, islands[i].numIndexes, GL_UNSIGNED_INT, 0);
 			glBindVertexArray(0);
-
+			glUniform1i(bumpMapping_uniformId, false);
 			//begin of billboarding trees
 
 			glUniform1i(texMode_uniformId, 3);
@@ -1134,7 +1146,6 @@ void renderIslandsAndTrees() {
 			popMatrix(MODEL);
 			glUniform1i(texMode_uniformId, 0);
 			//end of billboarding trees
-	
 				// Render two houses on each island
 			for (uint16_t j = 0; j < 2; j++) {
 				pushMatrix(MODEL);
@@ -1774,6 +1785,23 @@ void processKeys(unsigned char key, int xx, int yy)
 		paused = false;
 		restartGame();
 		break;
+
+	case 'l':
+		//toggle on/off cubeMapping
+		if (paused||gameOver){
+			break;
+		}
+		//cube mapping is only used on objects where there are no textures
+		cubeMapKey = !cubeMapKey;
+		break;
+
+	case 'k':
+		//toggle on/off bumpMapping
+		if (paused || gameOver) {
+			break;
+		}
+		bumpMapping= !bumpMapping;
+		break;
 	}
 
 }
@@ -1982,6 +2010,9 @@ GLuint setupShaders() {
 	pointOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "pointLightsOn");
 	spotOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLightsOn");
 	fogOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "fogOn");
+	cubeMapping = glGetUniformLocation(shader.getProgramIndex(), "cubeMapping");
+	reflect_perFragment_uniformId = glGetUniformLocation(shader.getProgramIndex(), "reflect_perFrag");
+	bumpMapping_uniformId = glGetUniformLocation(shader.getProgramIndex(), "bumpMapping");
 
 
 	// Shader for bitmap Text

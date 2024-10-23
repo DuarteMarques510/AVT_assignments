@@ -52,10 +52,14 @@ uniform bool fogOn;
 uniform bool normalMap;
 uniform bool specularMap;
 uniform uint diffMapCount;
+uniform bool cubeMapping;
+uniform bool bumpMapping;
 
 uniform vec3 fogColor = vec3(0.5, 0.6, 0.7);  // Color of the fog
 uniform float fogDensity = 0.03;               // Fog density to control thickness
 uniform int depthFog; 
+uniform mat4 m_View;
+uniform int reflect_perFrag;
 
 vec4 diff, auxSpec;
 
@@ -65,7 +69,10 @@ in Data {
 	vec3 lightDir;
 	vec2 tex_coord;
 	vec3 skyboxTexCoord;
+	vec3 reflected;
 } DataIn;
+
+const float reflect_factor = 1.0;
 
 in vec4 pos;
 
@@ -77,9 +84,10 @@ void main() {
 
 	vec4 texel;
 	vec4 texel1;
+	vec4 cube_texel;
 
-	if (normalMap) {
-		n= normalize(2.0*texture(texUnitNormalMap, DataIn.tex_coord).rgb - 1.0);
+	if (bumpMapping) {
+		n= normalize(2.0*texture(texmap1, DataIn.tex_coord).rgb - 1.0);
 	}
 	else{
 		n= normalize(DataIn.normal);
@@ -192,5 +200,26 @@ void main() {
 	}
 	else if(texMode==5){
 		colorOut = texture(cubeMap, DataIn.skyboxTexCoord);
+		//colorOut = texture(texmap1, DataIn.tex_coord);
 	}
+	else if (cubeMapping){
+		if(reflect_perFrag == 1) {  //reflected vector calculated here
+			vec3 reflected1 = vec3 (transpose(m_View) * vec4 (vec3(reflect(-e, n)), 0.0)); //reflection vector in world coord
+			reflected1.x= -reflected1.x;   
+			cube_texel = texture(cubeMap, reflected1);
+		}
+		else
+			cube_texel = texture(cubeMap, DataIn.reflected); //use interpolated reflected vector calculated in vertex shader
+
+		texel = texture(texmap0, DataIn.tex_coord);  // texel from lighwood.tga
+		vec4 aux_color = mix(texel, cube_texel, reflect_factor);
+		aux_color = max(intensity*aux_color + spec, 0.1*aux_color);
+	    colorOut = vec4(aux_color.rgb, 1.0); 
+	  //colorOut = vec4(cube_texel.rgb, 1.0);
+	}
+	else if (bumpMapping){
+		texel = texture(texmap0, DataIn.tex_coord);  // texel from stone.tga
+		colorOut = vec4((max(intensity*texel + spec, 0.2*texel)).rgb, 1.0);
+	}
+
 }

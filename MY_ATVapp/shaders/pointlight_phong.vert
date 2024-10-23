@@ -4,10 +4,13 @@ uniform mat4 m_pvm;
 uniform mat4 m_viewModel;
 uniform mat3 m_normal;
 uniform mat4 m_Model;
-//uniform mat4 m_View;
+uniform mat4 m_View;
 
 uniform vec4 l_pos;
 uniform bool normalMap;
+uniform int reflect_perFrag; //reflect vector calculated in the frag shader
+uniform bool cubeMapping;
+uniform bool bumpMapping;
 
 in vec4 position;
 in vec4 normal; 
@@ -20,6 +23,7 @@ out Data {
 	vec3 lightDir;
 	vec2 tex_coord;
 	vec3 skyboxTexCoord;
+	vec3 reflected;
 } DataOut;
 
 out vec4 pos;
@@ -40,7 +44,7 @@ void main () {
 	eyeDir = vec3(-pos);
 	lightDir = vec3(l_pos - pos);
 
-	if (normalMap){
+	if (bumpMapping){
 		t = normalize(m_normal * tangent.xyz);
 		b = normalize(m_normal * bitangent.xyz);
 
@@ -59,6 +63,11 @@ void main () {
 	DataOut.lightDir = lightDir;
 	DataOut.eye = eyeDir;
 	//DataOut.tex_coord = vec2(texCoord);
+
+	if((cubeMapping) && (reflect_perFrag == 0)) {  //calculate here the reflected vector
+			DataOut.reflected = vec3 (transpose(m_View) * vec4 (vec3(reflect(-DataOut.eye, DataOut.normal)), 0.0)); //reflection vector in world coord
+			DataOut.reflected.x= -DataOut.reflected.x; // as texturas foram mapeadas no interior da skybox 
+		}
 
 	gl_Position = m_pvm * position;	
 }
