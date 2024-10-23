@@ -1946,7 +1946,7 @@ GLuint setupShaders() {
 	if (!shader.isProgramValid()) {
 		printf("GLSL Model Program Not Valid!\n");
 		printf("InfoLog for Per Fragment Phong Lightning Shader\n%s\n\n", shader.getAllInfoLogs().c_str());
-		exit(1);
+		//exit(1);
 	}
 	texMode_uniformId = glGetUniformLocation(shader.getProgramIndex(), "texMode");
 	pvm_uniformId = glGetUniformLocation(shader.getProgramIndex(), "m_pvm");

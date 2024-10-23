@@ -191,6 +191,6 @@ void main() {
 			colorOut = mat.diffuse * texel;
 	}
 	else if(texMode==5){
-		colorOut = texture(texmap1, DataIn.tex_coord);
+		colorOut = texture(cubeMap, DataIn.skyboxTexCoord);
 	}
 }
