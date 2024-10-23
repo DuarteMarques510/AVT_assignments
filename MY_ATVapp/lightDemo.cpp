@@ -1411,8 +1411,8 @@ void renderScene(void) {
 		cams[activeCamera].camTarget[0],
 		cams[activeCamera].camTarget[1],
 		cams[activeCamera].camTarget[2],
-		0, 1, 0  // Vetor para cima
-	);s[activeCamera].camTarget[2], 0, 1, 0);
+		0, 1, 0
+	);
 
 	float ratio = (float)(m_viewport[2] - m_viewport[0]) / (float)(m_viewport[3] - m_viewport[1]);
 	loadIdentity(PROJECTION);
