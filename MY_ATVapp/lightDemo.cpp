@@ -102,6 +102,7 @@ struct MyMesh particlesMesh;
 struct MyMesh treeMesh;
 struct MyMesh flareMesh;
 struct MyMesh skyboxMesh;
+struct MyMesh cubeMesh;
 //External array storage defined in AVTmathLib.cpp
 
 /// The storage for matrices
@@ -231,6 +232,7 @@ bool spotLightsOn = true;
 bool fogOn = true;
 bool paused = false;
 bool gameOver = false;
+bool winner = false;
 
 // Mouse Tracking Variables
 int startX, startY, tracking = 0;
@@ -303,9 +305,9 @@ void iniParticles(void)
 		phi = frand() * M_PI;
 		theta = 2.0 * frand() * M_PI;
 
-		particulas[i].x = -47.0f;
+		particulas[i].x = myBoat.position[0];
 		particulas[i].y = 5.0f;
-		particulas[i].z = 0.0f;
+		particulas[i].z = myBoat.position[2];
 		particulas[i].vx = v * cos(theta) * sin(phi);
 		particulas[i].vy = v * cos(phi);
 		particulas[i].vz = v * sin(theta) * sin(phi);
@@ -491,6 +493,8 @@ void updateBoat(int value) {
 	}//if the colision code is not 0 or -1, its a collsion that makes the position update not happen
 	else if (collision==3 && fireworks==0) {
 		fireworks = 1;
+		gameOver = 1;
+		winner = 1;
 		iniParticles();
 	}
 
@@ -1077,11 +1081,11 @@ void renderIslandsAndTrees() {
 	for (uint16_t i = 0; i < islands.size(); i++) {
 
 		if (bumpMapping) {
-			printf("bump ativo\n");
+			//printf("bump ativo\n");
 			glUniform1i(texMode_uniformId, 7);
 		}
 		else {
-			printf("bump desativado\n");
+			//printf("bump desativado\n");
 			glUniform1i(texMode_uniformId, 6);
 		}
 		//matrix for the islands, pop is at line 1145
@@ -1428,9 +1432,9 @@ void renderScene(void) {
 	glUseProgram(shader.getProgramIndex());
 
 	//não vai ser preciso enviar o material pois o cubo não é desenhado
-	/*rotate(MODEL, 45.0f, 0.0, 0.0, 1.0);*/
+	//rotate(MODEL, 0.0f, 0.0, 0.0, 1.0);
 	//translate(MODEL, 0.0f, 0.0f, 0.0f);
-	//scale(MODEL, 2.0f, 1.0f, 1.0f);
+	//scale(MODEL, 1.0f, 1.0f, 1.0f);
 	//// send matrices to OGL
 	//computeDerivedMatrix(PROJ_VIEW_MODEL);
 	////glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
@@ -1865,17 +1869,23 @@ void renderScene(void) {
 
 	std::ostringstream timeString;
 	timeString << "Time: " << timeMinutes << ":" << std::setw(2) << std::setfill('0') << timeSeconds;
-	RenderText(shaderText, timeString.str(), 750.0f, 50.0f, 1.0f, 0.8f, 0.5f, 0.2f);
+	RenderText(shaderText, timeString.str(), 25.0f, 170.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 	if (paused && !gameOver) {
-		RenderText(shaderText, "PAUSE!", 440.0f, 570.0f, 0.5f, 0.9, 0.3f, 0.9f);
+		RenderText(shaderText, "PAUSE!", 440.0f, 510.0f, 0.75f, 0.6, 0.6f, 0.6f);
 	}
 	if (gameOver) {
-		RenderText(shaderText, "GAME OVER! Press R to restart", 440.0f, 570.0f, 0.5f, 0.9, 0.3f, 0.9f);
+		if (!winner) {
+			RenderText(shaderText, "GAME OVER! Press R to restart", 440.0f, 570.0f, 0.75f, 0.6f, 0.6f, 0.9f);
+		}
+		else {
+			RenderText(shaderText, "YOU WON! Press R to restart", 440.0f, 570.0f, 0.75f, 0.6f, 0.6f, 0.9f);
+		}
+		
 	}
-	std::string piranhaString = "Piranha Level: " + std::to_string(piranhaLevel);
-	RenderText(shaderText, piranhaString.c_str(), 800.0f, 600.0f, 1.0f, 0.8f, 0.5f, 0.2f);
+	std::string piranhaString = "Spider Level: " + std::to_string(piranhaLevel);
+	RenderText(shaderText, piranhaString.c_str(), 25.0f, 620.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 	std::string lives = "Remaining Lives: " + std::to_string(remainingLives);
-	RenderText(shaderText, lives.c_str(), 50.0f, 600.0f, 1.0f, 0.8f, 0.5f, 0.2f);
+	RenderText(shaderText, lives.c_str(), 25.0f, 580.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 
 	glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
@@ -1905,15 +1915,12 @@ void restartGame() {
 	paddleangle[0] = 0.0f;
 	paddleangle[1] = 0.0f;
 	resetWaterCreatures();
-	fogOn = true;
-	dayTime = true;
-	pointLightsOn = true;
-	spotLightsOn = true;
 	piranhaLevel = 1;
 	remainingLives = 5;
 	timeMinutes = 0;
 	timeSeconds = 0;
 	gameOver = 0;
+	winner = 0;
 }
 
 // ------------------------------------------------------------
@@ -2563,6 +2570,15 @@ int init()
 	flareMesh = amesh;
 
 	loadFlareFile(&flare, "flare.txt");
+
+	amesh = createCube();
+	memcpy(amesh.mat.ambient, amb1, 4 * sizeof(float));
+	memcpy(amesh.mat.diffuse, diff1, 4 * sizeof(float));
+	memcpy(amesh.mat.specular, spec1, 4 * sizeof(float));
+	memcpy(amesh.mat.emissive, emissive, 4 * sizeof(float));
+	amesh.mat.shininess = shininess;
+	amesh.mat.texCount = texcount;
+	cubeMesh = amesh;
 
 
 	// some GL settings

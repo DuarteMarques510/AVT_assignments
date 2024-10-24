@@ -141,7 +141,7 @@ void main() {
 				float intSpec = max(dot(h,n), 0.0);
 				spec = auxSpec * pow(intSpec, mat.shininess);
 			}
-			color += intensity * diff + spec;
+			color += vec4(0.2, 0.2, 0.2, 1.0)* intensity * diff + spec;
 		}
 	}
 
