@@ -97,7 +97,7 @@ void main() {
 
 	vec3 l = normalize(vec3(dirLight.direction));
 	vec3 e = normalize(DataIn.eye);
-	float intensity = max(dot(n,l), 0.0);
+	float intensity = 0; //max(dot(n,l), 0.0);
 
 	if(mat.texCount==0){
 		diff =mat.diffuse;
@@ -122,6 +122,7 @@ void main() {
 	}
 
 	if (dayTime){
+		intensity=max(dot(n,l), 0.0);
 		if (intensity > 0.0) {
 			vec3 h = normalize(l + e);
 			float intSpec = max(dot(h,n), 0.0);
@@ -134,6 +135,7 @@ void main() {
 	//point lights
 	if (pointLightsOn){
 		for (int i = 0; i < 6; i++) {
+			intensity=max(dot(n,l), 0.0);
 			l = normalize(vec3(pointLights[i].position) + DataIn.eye);
 			if (intensity > 0.0) {
 				vec3 h = normalize(l + e);
@@ -146,6 +148,7 @@ void main() {
 
 	if (spotLightsOn){
 		for (int i=0; i<2; i++){
+			intensity=max(dot(n,l), 0.0);
 			l = normalize(vec3(spotLights[i].position) + DataIn.eye);
 			float theta = dot(l, normalize(vec3(spotLights[i].direction)));
 			if (theta > cos(radians(spotLights[i].angle))){
