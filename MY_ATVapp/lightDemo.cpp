@@ -1075,7 +1075,15 @@ void renderIslandsAndTrees() {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	for (uint16_t i = 0; i < islands.size(); i++) {
-		glUniform1i(bumpMapping_uniformId, bumpMapping);
+
+		if (bumpMapping) {
+			printf("bump ativo\n");
+			glUniform1i(texMode_uniformId, 7);
+		}
+		else {
+			printf("bump desativado\n");
+			glUniform1i(texMode_uniformId, 6);
+		}
 		//matrix for the islands, pop is at line 1145
 		pushMatrix(MODEL);
 		{
@@ -1103,7 +1111,7 @@ void renderIslandsAndTrees() {
 			glBindVertexArray(islands[i].vao);
 			glDrawElements(islands[i].type, islands[i].numIndexes, GL_UNSIGNED_INT, 0);
 			glBindVertexArray(0);
-			glUniform1i(bumpMapping_uniformId, false);
+			//glUniform1i(bumpMapping_uniformId, false);
 			//begin of billboarding trees
 
 			glUniform1i(texMode_uniformId, 3);
@@ -1457,13 +1465,13 @@ void renderScene(void) {
 	glActiveTexture(GL_TEXTURE6);
 	glBindTexture(GL_TEXTURE_2D, textures[6]);
 
-	glUniform1i(tex_loc, 0);
+	glUniform1i(tex_loc, 0); //stone.tga
 	glUniform1i(tex_loc1, 1);
 	glUniform1i(tex_loc2, 2);
 	glUniform1i(tex_loc3, 3);
 	glUniform1i(tex_loc4, 4);
 	glUniform1i(tex_cube_loc, 5);
-	glUniform1i(tex_loc6, 6);
+	glUniform1i(tex_loc6, 6); //normal.tga
 
 	glUniform1i(directOnOff_loc, dayTime); //send boolean variables to shader
 	glUniform1i(pointOnOff_loc, pointLightsOn);
@@ -1806,7 +1814,7 @@ void processKeys(unsigned char key, int xx, int yy)
 		if (paused || gameOver) {
 			break;
 		}
-		bumpMapping= !bumpMapping;
+		bumpMapping = !bumpMapping;
 		break;
 	}
 

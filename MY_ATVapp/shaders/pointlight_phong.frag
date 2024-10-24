@@ -87,17 +87,16 @@ void main() {
 	vec4 texel1;
 	vec4 cube_texel;
 
-	if (bumpMapping) {
+	if (texMode==7) {
 		n= normalize(2.0*texture(texmap6, DataIn.tex_coord).rgb - 1.0);
 	}
 	else{
 		n= normalize(DataIn.normal);
 	}
-	n=normalize(DataIn.normal);
 
 	vec3 l = normalize(vec3(dirLight.direction));
 	vec3 e = normalize(DataIn.eye);
-	float intensity = 0; //max(dot(n,l), 0.0);
+	float intensity =0;
 
 	if(mat.texCount==0){
 		diff =mat.diffuse;
@@ -135,29 +134,29 @@ void main() {
 	//point lights
 	if (pointLightsOn){
 		for (int i = 0; i < 6; i++) {
-			intensity=max(dot(n,l), 0.0);
 			l = normalize(vec3(pointLights[i].position) + DataIn.eye);
+			intensity=max(dot(n,l), 0.0);
 			if (intensity > 0.0) {
 				vec3 h = normalize(l + e);
 				float intSpec = max(dot(h,n), 0.0);
 				spec = auxSpec * pow(intSpec, mat.shininess);
 			}
-			color += vec4(0.2, 0.2, 0.2, 1.0)*intensity * diff + spec;
+			color += intensity * diff + spec;
 		}
 	}
 
 	if (spotLightsOn){
 		for (int i=0; i<2; i++){
-			intensity=max(dot(n,l), 0.0);
 			l = normalize(vec3(spotLights[i].position) + DataIn.eye);
 			float theta = dot(l, normalize(vec3(spotLights[i].direction)));
 			if (theta > cos(radians(spotLights[i].angle))){
+				intensity=max(dot(n,l), 0.5);
 				if (intensity > 0.0) {
 					vec3 h = normalize(l + e);
 					float intSpec = max(dot(h,n), 0.0);
 					spec = auxSpec * pow(intSpec, mat.shininess);
 				}
-				color += vec4(0.5, 0.5, 0.5, 1.0)* intensity * diff + spec;
+				color += intensity * diff + spec;
 			}
 		}
 	}
@@ -206,6 +205,12 @@ void main() {
 		colorOut = texture(cubeMap, DataIn.skyboxTexCoord);
 		//colorOut = texture(texmap1, DataIn.tex_coord);
 	}
+	else if (texMode==6 || texMode==7){
+		texel = texture(texmap0, DataIn.tex_coord);  // texel from stone.tga
+		if(texel.a == 0.0) discard;
+		else
+		colorOut = vec4(max(intensity*texel.rgb + vec3(spec), 0.1*texel.rgb), texel.a);
+	}
 	else if (cubeMapping){
 		if(reflect_perFrag == 1) {  //reflected vector calculated here
 			vec3 reflected1 = vec3 (transpose(m_View) * vec4 (vec3(reflect(-e, n)), 0.0)); //reflection vector in world coord
@@ -220,10 +225,6 @@ void main() {
 		aux_color = max(intensity*aux_color + spec, 0.1*aux_color);
 	    colorOut = vec4(aux_color.rgb, 1.0); 
 	  //colorOut = vec4(cube_texel.rgb, 1.0);
-	}
-	else if (bumpMapping){
-		texel = texture(texmap0, DataIn.tex_coord);  // texel from stone.tga
-		colorOut = vec4((max(intensity*texel + spec, 0.2*texel)).rgb, 1.0);
 	}
 
 }
