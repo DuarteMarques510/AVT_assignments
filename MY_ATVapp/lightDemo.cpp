@@ -1396,57 +1396,75 @@ void renderScene(void) {
 
 	GLint loc;
 	int m_viewport[4];
-	glGetIntegerv(GL_VIEWPORT, m_viewport);
 	float particle_color[4];
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glGetIntegerv(GL_VIEWPORT, m_viewport);
-
-	FrameCount++;
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	// load identity matrices
+	glClearStencil(0x0);
+
 	loadIdentity(VIEW);
 	loadIdentity(MODEL);
 
-	if (activeCamera == 0) {
-		// Keep the camera facing the boat, but allow manual control to adjust the view
-		float boatAngleRadians = myBoat.angle * M_PI / 180.0f;
-		float cameraAngleRadians = (myBoat.angle + alpha) * M_PI / 180.0f;
-	
-		cams[activeCamera].camPos[0] = myBoat.position[0] + r * sin(cameraAngleRadians) * cos(beta * M_PI / 180.0f);
-		cams[activeCamera].camPos[1] = myBoat.position[1] + r * sin(beta * M_PI / 180.0f);  // Controls the height
-		cams[activeCamera].camPos[2] = myBoat.position[2] + r * cos(cameraAngleRadians) * cos(beta * M_PI / 180.0f);
-	
-		// The camera is directed to where the boat is facing
-		cams[activeCamera].camTarget[0] = myBoat.position[0] + sin(boatAngleRadians);
-		cams[activeCamera].camTarget[1] = myBoat.position[1];
-		cams[activeCamera].camTarget[2] = myBoat.position[2] + cos(boatAngleRadians);
-	}
-
-	lookAt(
-		cams[activeCamera].camPos[0],
-		cams[activeCamera].camPos[1],
-		cams[activeCamera].camPos[2],
-		cams[activeCamera].camTarget[0],
-		cams[activeCamera].camTarget[1],
-		cams[activeCamera].camTarget[2],
-		0, 1, 0
-	);
-
+	glGetIntegerv(GL_VIEWPORT, m_viewport);
+	FrameCount++;
+	// load identity matrices
 	float ratio = (float)(m_viewport[2] - m_viewport[0]) / (float)(m_viewport[3] - m_viewport[1]);
+
+	pushMatrix(PROJECTION);
 	loadIdentity(PROJECTION);
-	if (cams[activeCamera].type == 0) {
-		//perspective camera
-		perspective(53.13f, ratio, 0.1f, 1000.0f);
+	if (ratio <= 0) {
+		ortho(-2.0, 2.0, -2.0 * (GLfloat)WinY / (GLfloat)WinX,
+			2.0 * (GLfloat)WinY / (GLfloat)WinX, -10, 10);
 	}
 	else {
-		//orthogonal camera
-		ortho(ratio * (-55), ratio * 55, -55, 55, 0.1f, 55); //left, right, bottom, top
+		ortho(-2.0 * ratio,
+			2.0 * ratio, -2.0, 2.0, -10, 10);
 	}
-
-	// use our shader
+	pushMatrix(VIEW);
+	loadIdentity(VIEW);
+	pushMatrix(MODEL);
+	loadIdentity(MODEL);
 
 	glUseProgram(shader.getProgramIndex());
+
+	//não vai ser preciso enviar o material pois o cubo não é desenhado
+	/*rotate(MODEL, 45.0f, 0.0, 0.0, 1.0);*/
+	//translate(MODEL, 0.0f, 0.0f, 0.0f);
+	//scale(MODEL, 2.0f, 1.0f, 1.0f);
+	//// send matrices to OGL
+	//computeDerivedMatrix(PROJ_VIEW_MODEL);
+	////glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+	//glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+	//computeNormalMatrix3x3();
+	//glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+	//glClear(GL_STENCIL_BUFFER_BIT);
+	//glStencilFunc(GL_NEVER, 0x1, 0x1);
+	//glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP);
+
+	//glBindVertexArray(cubeMesh.vao);
+	//glDrawElements(cubeMesh.type, cubeMesh.numIndexes, GL_UNSIGNED_INT, 0);
+	//glBindVertexArray(0);
+
+	// Configure stencil to pass only where stencil value equals 1
+	glStencilFunc(GL_EQUAL, 0x1, 0x1);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+	float screenWOrtho = 2 * ratio;
+	float screenHOrtho = 4;
+	float screenHView = WinY / screenHOrtho;
+	float screenWView = WinX / screenWOrtho;
+	glViewport(0, 0, screenWView, screenHView);
+	loadIdentity(PROJECTION);
+	perspective(73.13f, ratio, 1.0f, 1000.0f);
+
+	lookAt(
+		myBoat.position[0],
+		myBoat.position[1] + 1.5f,
+		myBoat.position[2] ,
+		myBoat.position[0] + myBoat.direction[0],
+		myBoat.position[1] + 1.5f,
+		myBoat.position[2] - myBoat.direction[2],
+		0, 1, 0);
 
 	float res[4];
 
@@ -1465,23 +1483,22 @@ void renderScene(void) {
 	glActiveTexture(GL_TEXTURE6);
 	glBindTexture(GL_TEXTURE_2D, textures[6]);
 
-	glUniform1i(tex_loc, 0); //stone.tga
+	glUniform1i(tex_loc, 0);
 	glUniform1i(tex_loc1, 1);
 	glUniform1i(tex_loc2, 2);
 	glUniform1i(tex_loc3, 3);
 	glUniform1i(tex_loc4, 4);
 	glUniform1i(tex_cube_loc, 5);
-	glUniform1i(tex_loc6, 6); //normal.tga
 
 	glUniform1i(directOnOff_loc, dayTime); //send boolean variables to shader
 	glUniform1i(pointOnOff_loc, pointLightsOn);
 	glUniform1i(spotOnOff_loc, spotLightsOn);
 	glUniform1i(fogOnOff_loc, fogOn);
 
-	
+
 	multMatrixPoint(VIEW, DirectlightPos, res);
 	glUniform4fv(direc_loc, 1, res);
-	
+
 	multMatrixPoint(VIEW, pointLights[0], res);
 	glUniform4fv(point_loc, 1, res);
 	multMatrixPoint(VIEW, pointLights[1], res);
@@ -1494,8 +1511,210 @@ void renderScene(void) {
 	glUniform4fv(point_loc4, 1, res);
 	multMatrixPoint(VIEW, pointLights[5], res);
 	glUniform4fv(point_loc5, 1, res);
-	
-	
+
+
+	multMatrixPoint(VIEW, spotLights[0].position, res);
+	glUniform4fv(spot_loc, 1, res);
+	multMatrixPoint(VIEW, spotLights[1].position, res);
+	glUniform4fv(spot_loc1, 1, res);
+	multMatrixPoint(VIEW, spotLights[0].direction, res);
+	glUniform4fv(spot_dir_loc, 1, res);
+	multMatrixPoint(VIEW, spotLights[1].direction, res);
+	glUniform4fv(spot_dir_loc1, 1, res);
+	glUniform1f(spot_angle_loc, spotLights[0].angle);
+	glUniform1f(spot_angle_loc1, spotLights[1].angle);
+
+
+	renderSkyBox();
+	renderBoat();
+	renderFinishingLine();
+	renderRedCylinders();
+
+	//restore textures potentially taken by the spiders
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, textures[0]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, textures[1]);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, textures[2]);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, textures[3]);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, textures[4]);
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textures[5]);
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, textures[6]);
+
+	glUniform1i(tex_loc, 0);
+	glUniform1i(tex_loc1, 1);
+	glUniform1i(tex_loc2, 2);
+	glUniform1i(tex_loc3, 3);
+	glUniform1i(tex_loc4, 4);
+	glUniform1i(tex_cube_loc, 5);
+	glUniform1i(tex_loc6, 6);
+
+	renderFloats();
+	renderIslandsAndTrees();
+	renderPlain();
+
+	if (fireworks) {
+
+		updateParticles();
+
+		// draw fireworks particles
+
+		glBindTexture(GL_TEXTURE_2D, textures[3]); //particle.tga associated to TU0 
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		glDepthMask(GL_FALSE);  //Depth Buffer Read Only
+
+		glUniform1i(texMode_uniformId, 2); // draw modulated textured particles 
+
+		for (int i = 0; i < MAX_PARTICULES; i++)
+		{
+			if (particulas[i].life > 0.0f) /* só desenha as que ainda estão vivas */
+			{
+
+				/* A vida da partícula representa o canal alpha da cor. Como o blend está activo a cor final é a soma da cor rgb do fragmento multiplicada pelo
+				alpha com a cor do pixel destino */
+
+				particle_color[0] = particulas[i].r;
+				particle_color[1] = particulas[i].g;
+				particle_color[2] = particulas[i].b;
+				particle_color[3] = particulas[i].life;
+
+				// send the material - diffuse color modulated with texture
+				loc = glGetUniformLocation(shader.getProgramIndex(), "mat.diffuse");
+				glUniform4fv(loc, 1, particle_color);
+
+				pushMatrix(MODEL);
+				translate(MODEL, particulas[i].x, particulas[i].y, particulas[i].z);
+				rotate(MODEL, 45.0f, 0.0f, 1.0f, 0.0f);
+
+				// send matrices to OGL
+				computeDerivedMatrix(PROJ_VIEW_MODEL);
+				glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
+				glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
+				computeNormalMatrix3x3();
+				glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
+
+				glBindVertexArray(particlesMesh.vao);
+				glDrawElements(particlesMesh.type, particlesMesh.numIndexes, GL_UNSIGNED_INT, 0);
+				popMatrix(MODEL);
+			}
+			else deadParticles++;
+		}
+		glUniform1i(texMode_uniformId, 0);
+
+		glDepthMask(GL_TRUE); //make depth buffer again writeable
+
+		if (deadParticles == MAX_PARTICULES) {
+			fireworks = 0;
+			deadParticles = 0;
+			printf("All particles dead\n");
+		}
+
+	}
+
+	popMatrix(MODEL);
+	popMatrix(VIEW);
+	popMatrix(PROJECTION);
+
+	glViewport(m_viewport[0], m_viewport[1], m_viewport[2], m_viewport[3]);
+
+	// Configure stencil to pass only where stencil value is not equal to 1
+	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+	if (activeCamera == 0) {
+		// Keep the camera facing the boat, but allow manual control to adjust the view
+		float boatAngleRadians = myBoat.angle * M_PI / 180.0f;
+		float cameraAngleRadians = (myBoat.angle + alpha) * M_PI / 180.0f;
+
+		cams[activeCamera].camPos[0] = myBoat.position[0] + r * sin(cameraAngleRadians) * cos(beta * M_PI / 180.0f);
+		cams[activeCamera].camPos[1] = myBoat.position[1] + r * sin(beta * M_PI / 180.0f);  // Controls the height
+		cams[activeCamera].camPos[2] = myBoat.position[2] + r * cos(cameraAngleRadians) * cos(beta * M_PI / 180.0f);
+
+		// The camera is directed to where the boat is facing
+		cams[activeCamera].camTarget[0] = myBoat.position[0] + sin(boatAngleRadians);
+		cams[activeCamera].camTarget[1] = myBoat.position[1];
+		cams[activeCamera].camTarget[2] = myBoat.position[2] + cos(boatAngleRadians);
+	}
+
+
+	lookAt(
+		cams[activeCamera].camPos[0],
+		cams[activeCamera].camPos[1],
+		cams[activeCamera].camPos[2],
+		cams[activeCamera].camTarget[0],
+		cams[activeCamera].camTarget[1],
+		cams[activeCamera].camTarget[2],
+		0, 1, 0
+	);
+
+	loadIdentity(PROJECTION);
+	if (cams[activeCamera].type == 0) {
+		//perspective camera
+		perspective(53.13f, ratio, 0.1f, 1000.0f);
+	}
+	else {
+		//orthogonal camera
+		ortho(ratio * (-55), ratio * 55, -55, 55, 0.1f, 55); //left, right, bottom, top
+	}
+
+	// use our shader
+
+	glUseProgram(shader.getProgramIndex());
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, textures[0]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, textures[1]);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, textures[2]);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, textures[3]);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, textures[4]);
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textures[5]);
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, textures[6]);
+
+	glUniform1i(tex_loc, 0);
+	glUniform1i(tex_loc1, 1);
+	glUniform1i(tex_loc2, 2);
+	glUniform1i(tex_loc3, 3);
+	glUniform1i(tex_loc4, 4);
+	glUniform1i(tex_cube_loc, 5);
+	glUniform1i(tex_loc6, 6);
+
+	glUniform1i(directOnOff_loc, dayTime); //send boolean variables to shader
+	glUniform1i(pointOnOff_loc, pointLightsOn);
+	glUniform1i(spotOnOff_loc, spotLightsOn);
+	glUniform1i(fogOnOff_loc, fogOn);
+
+
+	multMatrixPoint(VIEW, DirectlightPos, res);
+	glUniform4fv(direc_loc, 1, res);
+
+	multMatrixPoint(VIEW, pointLights[0], res);
+	glUniform4fv(point_loc, 1, res);
+	multMatrixPoint(VIEW, pointLights[1], res);
+	glUniform4fv(point_loc1, 1, res);
+	multMatrixPoint(VIEW, pointLights[2], res);
+	glUniform4fv(point_loc2, 1, res);
+	multMatrixPoint(VIEW, pointLights[3], res);
+	glUniform4fv(point_loc3, 1, res);
+	multMatrixPoint(VIEW, pointLights[4], res);
+	glUniform4fv(point_loc4, 1, res);
+	multMatrixPoint(VIEW, pointLights[5], res);
+	glUniform4fv(point_loc5, 1, res);
+
+
 	multMatrixPoint(VIEW, spotLights[0].position, res);
 	glUniform4fv(spot_loc, 1, res);
 	multMatrixPoint(VIEW, spotLights[1].position, res);
@@ -1591,7 +1810,7 @@ void renderScene(void) {
 			}
 			else deadParticles++;
 		}
-		glUniform1i(texMode_uniformId, 0); 
+		glUniform1i(texMode_uniformId, 0);
 
 		glDepthMask(GL_TRUE); //make depth buffer again writeable
 
@@ -1646,7 +1865,7 @@ void renderScene(void) {
 
 	std::ostringstream timeString;
 	timeString << "Time: " << timeMinutes << ":" << std::setw(2) << std::setfill('0') << timeSeconds;
-	RenderText(shaderText, timeString.str(), 50.0f, 50.0f, 1.0f, 0.8f, 0.5f, 0.2f);
+	RenderText(shaderText, timeString.str(), 750.0f, 50.0f, 1.0f, 0.8f, 0.5f, 0.2f);
 	if (paused && !gameOver) {
 		RenderText(shaderText, "PAUSE!", 440.0f, 570.0f, 0.5f, 0.9, 0.3f, 0.9f);
 	}

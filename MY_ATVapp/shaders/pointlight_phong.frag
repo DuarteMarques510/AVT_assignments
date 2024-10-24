@@ -150,7 +150,7 @@ void main() {
 			l = normalize(vec3(spotLights[i].position) + DataIn.eye);
 			float theta = dot(l, normalize(vec3(spotLights[i].direction)));
 			if (theta > cos(radians(spotLights[i].angle))){
-				intensity=max(dot(n,l), 0.5);
+				intensity=max(dot(n,l), 0.0);
 				if (intensity > 0.0) {
 					vec3 h = normalize(l + e);
 					float intSpec = max(dot(h,n), 0.0);
