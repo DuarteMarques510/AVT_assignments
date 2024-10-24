@@ -6,6 +6,7 @@ uniform sampler2D texmap2;
 uniform sampler2D texmap3;
 uniform sampler2D texmap4;
 uniform sampler2D texmap5;
+uniform sampler2D texmap6;
 uniform samplerCube cubeMap;
 
 out vec4 colorOut;
@@ -87,7 +88,7 @@ void main() {
 	vec4 cube_texel;
 
 	if (bumpMapping) {
-		n= normalize(2.0*texture(texmap1, DataIn.tex_coord).rgb - 1.0);
+		n= normalize(2.0*texture(texmap6, DataIn.tex_coord).rgb - 1.0);
 	}
 	else{
 		n= normalize(DataIn.normal);

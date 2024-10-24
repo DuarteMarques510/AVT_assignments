@@ -115,7 +115,7 @@ GLint pvm_uniformId;
 GLint vm_uniformId;
 GLint normal_uniformId;
 GLint lPos_uniformId;
-GLint tex_loc, tex_loc1, tex_loc2, tex_loc3, tex_loc4, tex_loc5, tex_cube_loc;
+GLint tex_loc, tex_loc1, tex_loc2, tex_loc3, tex_loc4, tex_loc5, tex_cube_loc, tex_loc6;
 GLint texMode_uniformId;
 GLint model_uniformId;
 GLint view_uniformId;
@@ -129,7 +129,7 @@ GLint normalMap_loc, specularMap_loc, diffMapCount_loc;
 GLint cubeMapping;
 GLint reflect_perFragment_uniformId; //reflection vector calculated in the frag shader
 GLint bumpMapping_uniformId;
-GLuint textures[6];
+GLuint textures[7];
 GLuint FlareTextureArray[5];
 GLuint* texturesIds;
 //outro GLuint* se quisermos carregar outra textura para outra malha
@@ -1454,6 +1454,8 @@ void renderScene(void) {
 	glBindTexture(GL_TEXTURE_2D, textures[4]);
 	glActiveTexture(GL_TEXTURE5);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, textures[5]);
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, textures[6]);
 
 	glUniform1i(tex_loc, 0);
 	glUniform1i(tex_loc1, 1);
@@ -1461,6 +1463,7 @@ void renderScene(void) {
 	glUniform1i(tex_loc3, 3);
 	glUniform1i(tex_loc4, 4);
 	glUniform1i(tex_cube_loc, 5);
+	glUniform1i(tex_loc6, 6);
 
 	glUniform1i(directOnOff_loc, dayTime); //send boolean variables to shader
 	glUniform1i(pointOnOff_loc, pointLightsOn);
@@ -1515,6 +1518,8 @@ void renderScene(void) {
 	glBindTexture(GL_TEXTURE_2D, textures[4]);
 	glActiveTexture(GL_TEXTURE5);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, textures[5]);
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, textures[6]);
 
 	glUniform1i(tex_loc, 0);
 	glUniform1i(tex_loc1, 1);
@@ -1522,6 +1527,7 @@ void renderScene(void) {
 	glUniform1i(tex_loc3, 3);
 	glUniform1i(tex_loc4, 4);
 	glUniform1i(tex_cube_loc, 5);
+	glUniform1i(tex_loc6, 6);
 
 	renderFloats();
 	renderIslandsAndTrees();
@@ -2006,6 +2012,7 @@ GLuint setupShaders() {
 	tex_loc3 = glGetUniformLocation(shader.getProgramIndex(), "texmap3");
 	tex_loc4 = glGetUniformLocation(shader.getProgramIndex(), "texmap4");
 	tex_loc5 = glGetUniformLocation(shader.getProgramIndex(), "texmap5");
+	tex_loc6 = glGetUniformLocation(shader.getProgramIndex(), "texmap6");
 	directOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "dayTime");
 	pointOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "pointLightsOn");
 	spotOnOff_loc = glGetUniformLocation(shader.getProgramIndex(), "spotLightsOn");
@@ -2063,7 +2070,7 @@ int init()
 	/// Initialization of freetype library with font_name file
 	freeType_init(font_name);
 
-	glGenTextures(6, textures);
+	glGenTextures(7, textures);
 	Texture2D_Loader(textures, "stone.tga", 0);
 	Texture2D_Loader(textures, "water_quad.png", 1);
 	Texture2D_Loader(textures, "lightwood.tga", 2);
@@ -2072,6 +2079,7 @@ int init()
 
 	const char* filenames[] = { "posx.jpg", "negx.jpg", "posy.jpg", "negy.jpg", "posz.jpg", "negz.jpg" };
 	TextureCubeMap_Loader(textures, filenames, 5);
+	Texture2D_Loader(textures, "normal.tga", 6);
 
 	glGenTextures(5, FlareTextureArray);
 	Texture2D_Loader(FlareTextureArray, "crcl.tga", 0);
