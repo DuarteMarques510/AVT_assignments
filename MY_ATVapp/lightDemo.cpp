@@ -1431,24 +1431,6 @@ void renderScene(void) {
 
 	glUseProgram(shader.getProgramIndex());
 
-	//não vai ser preciso enviar o material pois o cubo não é desenhado
-	//rotate(MODEL, 0.0f, 0.0, 0.0, 1.0);
-	//translate(MODEL, 0.0f, 0.0f, 0.0f);
-	//scale(MODEL, 1.0f, 1.0f, 1.0f);
-	//// send matrices to OGL
-	//computeDerivedMatrix(PROJ_VIEW_MODEL);
-	////glUniformMatrix4fv(vm_uniformId, 1, GL_FALSE, mCompMatrix[VIEW_MODEL]);
-	//glUniformMatrix4fv(pvm_uniformId, 1, GL_FALSE, mCompMatrix[PROJ_VIEW_MODEL]);
-	//computeNormalMatrix3x3();
-	//glUniformMatrix3fv(normal_uniformId, 1, GL_FALSE, mNormal3x3);
-
-	//glClear(GL_STENCIL_BUFFER_BIT);
-	//glStencilFunc(GL_NEVER, 0x1, 0x1);
-	//glStencilOp(GL_REPLACE, GL_KEEP, GL_KEEP);
-
-	//glBindVertexArray(cubeMesh.vao);
-	//glDrawElements(cubeMesh.type, cubeMesh.numIndexes, GL_UNSIGNED_INT, 0);
-	//glBindVertexArray(0);
 
 	// Configure stencil to pass only where stencil value equals 1
 	glStencilFunc(GL_EQUAL, 0x1, 0x1);
